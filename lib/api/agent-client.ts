@@ -53,8 +53,8 @@ export async function callAgentStream(
   body: Record<string, unknown>
 ): Promise<ReadableStream<Uint8Array> | null> {
   const controller = new AbortController();
-  // Longer timeout for streaming — agent may need 60-90s for complex recipes
-  const timeout = setTimeout(() => controller.abort(), 120_000);
+  // Longer timeout for streaming — agent server has its own 90s deadline
+  const timeout = setTimeout(() => controller.abort(), 150_000);
 
   try {
     const res = await fetch(`${AGENT_URL}${endpoint}`, {

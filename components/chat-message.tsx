@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
+import ReactMarkdown from "react-markdown";
 import { cn } from "@/lib/utils";
 import type { ChatMessage as ChatMessageType } from "@/types/chat";
 import { RecipeCardInline } from "@/components/recipe-card-inline";
@@ -108,12 +109,31 @@ export function ChatMessage({ message }: ChatMessageProps) {
         )}
 
         {text && (
-          <p className="whitespace-pre-wrap leading-[1.75]">
-            {text}
+          <div className="chat-markdown leading-[1.75]">
+            <ReactMarkdown
+              components={{
+                p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-1">{children}</ul>,
+                ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-1">{children}</ol>,
+                li: ({ children }) => <li>{children}</li>,
+                h1: ({ children }) => <p className="font-bold text-base mb-2">{children}</p>,
+                h2: ({ children }) => <p className="font-bold text-base mb-2">{children}</p>,
+                h3: ({ children }) => <p className="font-semibold mb-1">{children}</p>,
+                code: ({ children }) => (
+                  <code className="bg-black/5 rounded px-1 py-0.5 text-xs">{children}</code>
+                ),
+                a: ({ href, children }) => (
+                  <a href={href} className="text-neon-accent underline" target="_blank" rel="noopener noreferrer">{children}</a>
+                ),
+              }}
+            >
+              {text}
+            </ReactMarkdown>
             {message.is_streaming && (
               <span className="inline-block w-1.5 h-4 ml-0.5 bg-neon-accent/60 animate-pulse rounded-sm" />
             )}
-          </p>
+          </div>
         )}
 
         {!text && message.is_streaming && (

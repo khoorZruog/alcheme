@@ -1,371 +1,310 @@
-# Next.js Firebase AI Boilerplate
+# alche:me (アルケミー)
 
-A production-ready Next.js boilerplate with Firebase Authentication, Firestore, Cloud Storage, and Vertex AI multi-agent workflows powered by Gemini 2.5 Flash.
+> 眠ったコスメから無限の可能性を調合する、あなた専属の自律型AIエージェントチーム
 
-## Features
+**alche:me** は、手持ちのコスメ在庫から最適なメイクレシピをAIエージェントが提案するフルスタックPWAアプリケーションです。Google ADK（Agent Development Kit）で構築された10体の専門AIエージェントが自律的に協調し、「手持ちコスメで、まだ見ぬ私に出会う」体験を実現します。
 
-- **Next.js 16** - Latest version with App Router and React Server Components
-- **React 19** - Latest React features
-- **TypeScript** - Full type safety
-- **Tailwind CSS 4.1.4** - Modern styling with CSS-first configuration
-- **shadcn/ui** - Beautiful, accessible UI components
-- **Firebase Auth** - Email/Password + Google OAuth authentication
-- **Cloud Firestore** - NoSQL database with real-time capabilities
-- **Cloud Storage** - File storage and management
-- **Vertex AI** - Gemini 2.5 Flash for AI-powered features
-- **Multi-Agent Workflows** - Coordinator, Research, and Writer agents working together
-- **Google Cloud Run** - Serverless deployment with Docker
+---
 
-## Prerequisites
+## 概要
 
-Before you begin, ensure you have:
+「コスメはたくさん持っているのに、毎朝のメイクが決まらない」——
+この **「コスメティック・パラドックス」** を解決するために、alche:me は以下を実現します:
 
-- Node.js 20+ installed
-- A Firebase project ([Create one here](https://console.firebase.google.com/))
-- A Google Cloud project with Vertex AI API enabled ([Enable here](https://console.cloud.google.com/))
-- Firebase Admin SDK service account key
-- Google Cloud service account key for Vertex AI
+- スマホで撮影するだけでAIがコスメを鑑定・在庫登録
+- 手持ちコスメ **だけ** でメイクレシピを生成（ハルシネーション率 0%）
+- AIキャラクターによる仕上がりプレビュー画像を自動生成
+- Beauty Logで日々のメイクを記録し、好みの傾向を分析
+- SNS機能でレシピを共有、フォロー・いいね・コメント
 
-## Quick Start
+---
 
-### 1. Clone and Install
+## 主な機能
+
+### AI Concierge（チャット）
+SSEストリーミングによるリアルタイム対話。10体のAIエージェントが連携し、在庫確認・レシピ生成・トレンド分析・天気ベース提案などを自律的に判断・実行します。
+
+### コスメスキャン
+カメラで撮影したコスメをGemini Visionが解析。ブランド・商品名・色・質感を自動識別し、楽天APIで商品情報を補完します。最大4枚同時スキャン対応。
+
+### インベントリ（Vanity）
+カテゴリフィルタ・検索機能付きの在庫一覧。各アイテムのスペック（発色力・持続力・製品寿命・ナチュラルさ）、残量、使用期限を管理。
+
+### メイクレシピ
+手持ち在庫のみで生成されたAIレシピ。ステップ別の手順、プロのコツ、代用テクニックを表示。Gemini 2.0 Flashによるプレビュー画像付き。公開/共有機能。
+
+### Beauty Log
+カレンダービューで日々のメイクを記録。使用レシピ・気分・天気・自己評価（1-5）を記録し、Profilerエージェントが傾向分析やマンネリ検知に活用。
+
+### SNSフィード
+Cookpad/WEAR風のレシピ共有SNS。フォロー/いいね/コメント機能、クイックリアクション（素敵！/真似したい！/参考になる！）、無限スクロールフィード。
+
+---
+
+## テクノロジースタック
+
+| レイヤー | 技術 |
+|---------|------|
+| **Frontend** | Next.js 16 + React 19 + TypeScript + Tailwind CSS 4 + shadcn/ui |
+| **Agent** | Python 3.12 + Google ADK + FastAPI + Gemini 2.5 Flash / 2.0 Flash |
+| **Database** | Cloud Firestore |
+| **Auth** | Firebase Authentication (Email/Password + Google OAuth) |
+| **Storage** | Cloud Storage |
+| **Hosting** | Cloud Run (Web + Agent) |
+| **CI/CD** | GitHub Actions |
+| **Testing** | Vitest + pytest + Playwright |
+
+---
+
+## アーキテクチャ
+
+### システム構成（BFFパターン）
+
+```
+[Next.js PWA — Cloud Run :3000]
+         │  HTTPS (REST + SSE)
+         ▼
+[Next.js API Routes — BFF]
+  - Firebase Auth Token 検証
+  - SSEストリーミングプロキシ
+         │
+         ▼
+[FastAPI + Google ADK — Cloud Run :8080]
+  - ADK Runner (エージェント実行)
+  - DatabaseSessionService (セッション永続化)
+  - InMemoryMemoryService (クロスセッション記憶)
+         │
+    ┌────┼────┐
+    ▼    ▼    ▼
+Firestore  Cloud Storage  External APIs
+(データ)   (画像)          (楽天/天気/Google)
+```
+
+### エージェントシステム（10体）
+
+```
+Concierge (Root Agent / gemini-2.0-flash)
+├── Inventory Manager     — コスメ画像認識・在庫管理
+├── Product Search        — Google検索 + 楽天APIで商品補完
+├── Cosmetic Alchemist    — 手持ち在庫のみでレシピ生成
+├── Memory Keeper         — Beauty Log の記録・取得
+├── Trend Hunter          — SNS/美容メディアのトレンド分析
+├── TPO Tactician         — 天気・予定ベースのメイク提案
+├── Profiler              — 嗜好傾向分析・マンネリ検知
+├── Makeup Instructor     — 代用テクニック・手順指導
+└── Simulator (stub)      — プレビュー画像生成
+```
+
+---
+
+## セットアップ
+
+### 前提条件
+
+- **Node.js** 22+
+- **Python** 3.12+
+- **Firebase** プロジェクト（Auth + Firestore + Storage）
+- **Google Cloud** プロジェクト（Vertex AI API 有効化）
+- **楽天 Web Service** アプリID（[取得はこちら](https://webservice.rakuten.co.jp/app/list)）
+
+### フロントエンド
 
 ```bash
-cd nextjs-firebase-ai-boilerplate
+# 依存関係インストール
 npm install
-```
 
-### 2. Configure Firebase
-
-#### Create a Firebase Project
-
-1. Go to [Firebase Console](https://console.firebase.google.com/)
-2. Create a new project or select an existing one
-3. Enable **Authentication** and add Email/Password and Google providers
-4. Create a **Firestore Database** (start in test mode)
-5. Enable **Storage**
-
-#### Get Firebase Configuration
-
-1. Go to Project Settings > General
-2. Under "Your apps", click the web icon (</>)
-3. Copy the Firebase configuration object
-
-#### Get Firebase Admin SDK Credentials
-
-1. Go to Project Settings > Service Accounts
-2. Click "Generate New Private Key"
-3. Save the JSON file as `service-account-key.json` in the project root
-
-### 3. Configure Google Cloud / Vertex AI
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Select your project (or create a new one)
-3. Enable the Vertex AI API
-4. Create a service account with Vertex AI User role
-5. Download the service account key JSON
-
-### 4. Environment Variables
-
-Copy `.env.example` to `.env.local`:
-
-```bash
+# 環境変数を設定
 cp .env.example .env.local
-```
+# .env.local に Firebase / GCP の設定を記入
 
-Fill in your credentials:
-
-```env
-# Firebase Configuration (Client SDK)
-NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
-
-# Firebase Admin SDK (Server-side)
-FIREBASE_PROJECT_ID=your_project_id
-FIREBASE_CLIENT_EMAIL=firebase-adminsdk@your_project.iam.gserviceaccount.com
-FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYOUR_PRIVATE_KEY_HERE\n-----END PRIVATE KEY-----"
-
-# Google Cloud / Vertex AI
-GOOGLE_CLOUD_PROJECT=your_project_id
-VERTEX_AI_LOCATION=us-central1
-GOOGLE_APPLICATION_CREDENTIALS=./service-account-key.json
-
-# Application
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-NODE_ENV=development
-```
-
-### 5. Run Development Server
-
-```bash
+# 開発サーバー起動
 npm run dev
+# → http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-## Project Structure
-
-```
-nextjs-firebase-ai-boilerplate/
-├── app/                           # Next.js App Router
-│   ├── (auth)/                    # Auth routes (login, signup)
-│   ├── (protected)/               # Protected routes (dashboard, agents)
-│   ├── api/                       # API routes
-│   │   └── ai/                    # AI endpoints
-│   ├── layout.tsx                 # Root layout
-│   ├── page.tsx                   # Home page
-│   └── globals.css                # Global styles
-├── components/                    # React components
-│   ├── auth/                      # Authentication components
-│   ├── ai/                        # AI workflow components
-│   └── ui/                        # shadcn/ui components
-├── lib/                           # Library code
-│   ├── firebase/                  # Firebase utilities
-│   │   ├── client.ts              # Client SDK
-│   │   ├── admin.ts               # Admin SDK
-│   │   ├── auth.ts                # Auth utilities
-│   │   ├── firestore.ts           # Firestore utilities
-│   │   └── storage.ts             # Storage utilities
-│   └── vertexai/                  # Vertex AI
-│       ├── client.ts              # Vertex AI client
-│       └── agents/                # Multi-agent system
-│           ├── types.ts           # Type definitions
-│           ├── base-agent.ts      # Base agent class
-│           ├── coordinator-agent.ts
-│           ├── research-agent.ts
-│           ├── writer-agent.ts
-│           └── orchestrator.ts    # Workflow orchestration
-├── types/                         # TypeScript types
-├── middleware.ts                  # Next.js middleware (auth)
-├── .env.example                   # Environment variables template
-├── Dockerfile                     # Docker configuration
-├── cloudbuild.yaml               # Cloud Build configuration
-└── package.json                   # Dependencies
-```
-
-## Key Features Guide
-
-### Authentication
-
-The boilerplate includes Firebase Authentication with:
-
-- **Email/Password** - Traditional authentication
-- **Google OAuth** - Social login
-- **Protected Routes** - Automatic redirection via middleware
-- **Auth Context** - React context for user state
-
-**Usage Example:**
-
-```typescript
-import { useAuth } from '@/components/auth/auth-provider';
-
-export function MyComponent() {
-  const { user, loading } = useAuth();
-
-  if (loading) return <div>Loading...</div>;
-  if (!user) return <div>Not authenticated</div>;
-
-  return <div>Welcome {user.email}</div>;
-}
-```
-
-### Firestore Database
-
-CRUD operations with type safety:
-
-```typescript
-import { createDocument, getDocument, updateDocument } from '@/lib/firebase/firestore';
-
-// Create
-const id = await createDocument('users', { name: 'John', email: 'john@example.com' });
-
-// Read
-const user = await getDocument('users', id);
-
-// Update
-await updateDocument('users', id, { name: 'Jane' });
-```
-
-### Cloud Storage
-
-File upload and management:
-
-```typescript
-import { uploadAndGetURL } from '@/lib/firebase/storage';
-
-const file = event.target.files[0];
-const url = await uploadAndGetURL(`uploads/${file.name}`, file);
-```
-
-### Multi-Agent AI Workflows
-
-The boilerplate includes a complete multi-agent system:
-
-1. **Coordinator Agent** - Plans and breaks down complex tasks
-2. **Research Agent** - Gathers and analyzes information
-3. **Writer Agent** - Creates polished content
-
-**Example Workflow:**
-
-```typescript
-import { WorkflowOrchestrator } from '@/lib/vertexai/agents/orchestrator';
-
-const orchestrator = new WorkflowOrchestrator();
-const results = await orchestrator.executeWorkflow(
-  "Research and write a blog post about renewable energy"
-);
-```
-
-## Deployment
-
-### Deploy to Google Cloud Run
-
-#### Prerequisites
-
-- Google Cloud CLI installed ([Install guide](https://cloud.google.com/sdk/docs/install))
-- Docker installed
-- Google Cloud project set up
-
-#### Deploy Steps
-
-1. **Authenticate with Google Cloud:**
+### エージェントサーバー
 
 ```bash
-gcloud auth login
-gcloud config set project YOUR_PROJECT_ID
+cd agent
+
+# 依存関係インストール
+pip install -e ".[dev]"
+
+# 環境変数を設定
+cp .env.example .env
+# .env に Google Cloud / 楽天 / OpenWeatherMap の設定を記入
+
+# サーバー起動
+python server.py
+# → http://localhost:8080
+
+# または ADK Web UI で起動（開発・デバッグ用）
+adk web alcheme
+# → http://localhost:8000
 ```
 
-2. **Build and deploy using Cloud Build:**
+---
+
+## 環境変数
+
+### フロントエンド（`.env.local`）
+
+| 変数名 | 説明 |
+|--------|------|
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | Firebase API Key |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Firebase Auth Domain |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Firebase Project ID |
+| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | Firebase Storage Bucket |
+| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Firebase Messaging Sender ID |
+| `NEXT_PUBLIC_FIREBASE_APP_ID` | Firebase App ID |
+| `FIREBASE_PROJECT_ID` | Firebase Admin Project ID |
+| `FIREBASE_CLIENT_EMAIL` | Firebase Admin Client Email |
+| `FIREBASE_PRIVATE_KEY` | Firebase Admin Private Key |
+| `NEXT_PUBLIC_APP_URL` | App URL (default: `http://localhost:3000`) |
+| `ADK_AGENT_URL` | Agent Server URL (default: `http://localhost:8080`) |
+| `AGENT_API_KEY` | Agent Server API Key |
+
+### エージェントサーバー（`agent/.env`）
+
+| 変数名 | 説明 |
+|--------|------|
+| `GOOGLE_GENAI_USE_VERTEXAI` | Vertex AI使用フラグ (`TRUE`) |
+| `GOOGLE_CLOUD_PROJECT` | GCP Project ID |
+| `GOOGLE_CLOUD_LOCATION` | GCP Region (default: `asia-northeast1`) |
+| `RAKUTEN_APP_ID` | 楽天 Web Service App ID |
+| `SESSION_DB_URL` | セッションDB URL (default: `sqlite+aiosqlite:///sessions.db`) |
+| `OPENWEATHERMAP_API_KEY` | OpenWeatherMap API Key |
+| `GCS_PREVIEW_BUCKET` | Cloud Storage bucket for preview images |
+| `SIMULATOR_MODEL` | 画像生成モデル (default: `gemini-2.0-flash-exp`) |
+
+---
+
+## テスト
 
 ```bash
-gcloud builds submit --config cloudbuild.yaml
+# フロントエンド（Vitest — 61+ tests）
+npm test
+
+# フロントエンド（watch mode）
+npm run test:watch
+
+# エージェント（pytest — 100+ tests）
+cd agent && python -m pytest tests/ -v
+
+# E2E（Playwright — 5 specs）
+npx playwright test
 ```
 
-3. **Set environment variables in Cloud Run:**
+### 品質ゲート
 
-Go to Cloud Run console and add your environment variables in the service settings.
+| ゲート | 基準 |
+|-------|------|
+| **Hallucination Rate** | 0%（在庫外アイテムがレシピに含まれないこと） |
+| **Unit Tests** | 全テスト通過（Python 100+ / Frontend 61+） |
+| **E2E** | 主要フロー通過（5 Playwright specs） |
 
-#### Manual Docker Deployment
+---
+
+## デプロイ
+
+### Cloud Build（推奨）
 
 ```bash
-# Build the Docker image
-docker build -t nextjs-firebase-ai-boilerplate .
-
-# Tag for Google Container Registry
-docker tag nextjs-firebase-ai-boilerplate gcr.io/YOUR_PROJECT_ID/nextjs-firebase-ai-boilerplate
-
-# Push to GCR
-docker push gcr.io/YOUR_PROJECT_ID/nextjs-firebase-ai-boilerplate
-
-# Deploy to Cloud Run
-gcloud run deploy nextjs-firebase-ai-boilerplate \
-  --image gcr.io/YOUR_PROJECT_ID/nextjs-firebase-ai-boilerplate \
-  --platform managed \
-  --region us-central1 \
-  --allow-unauthenticated
+gcloud builds submit --config=cloudbuild.yaml
 ```
 
-## Available Scripts
+Web + Agent の2つのCloud Runサービスが自動デプロイされます:
+- `alcheme-web` — Next.js フロントエンド + BFF（port 3000）
+- `alcheme-agent` — FastAPI エージェントサーバー（port 8080）
 
-- `npm run dev` - Start development server with Turbopack
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run lint` - Run ESLint
+### 手動デプロイ
 
-## Tech Stack Details
-
-- **Framework:** Next.js 16.1.5
-- **React:** 19.0.0
-- **TypeScript:** 5.x
-- **Styling:** Tailwind CSS 4.1.4
-- **UI Components:** shadcn/ui (Radix UI)
-- **Authentication:** Firebase Auth 11.1.0
-- **Database:** Cloud Firestore
-- **Storage:** Cloud Storage
-- **AI:** Vertex AI with Gemini 2.5 Flash
-- **Validation:** Zod 3.24.1
-- **Icons:** Lucide React
-- **Deployment:** Google Cloud Run
-
-## Firebase Security Rules
-
-### Firestore Rules
-
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-    match /public/{document=**} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-  }
-}
+```bash
+./scripts/deploy.sh
 ```
 
-### Storage Rules
+---
 
-```javascript
-rules_version = '2';
-service firebase.storage {
-  match /b/{bucket}/o {
-    match /uploads/{userId}/{allPaths=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-  }
-}
+## プロジェクト構造
+
+```
+alcheme/
+├── app/                        # Next.js App Router
+│   ├── (auth)/                 # 認証ページ (login, signup, onboarding)
+│   ├── (main)/                 # メイン機能（6タブ）
+│   │   ├── chat/               #   AIチャット
+│   │   ├── feed/               #   SNSフィード
+│   │   ├── scan/               #   コスメスキャン
+│   │   ├── inventory/          #   在庫一覧・詳細
+│   │   ├── recipes/            #   レシピ一覧・詳細
+│   │   ├── beauty-log/         #   Beauty Log
+│   │   └── settings/           #   プロフィール設定
+│   └── api/                    # BFF API Routes (25+ endpoints)
+│       ├── auth/               #   認証
+│       ├── chat/               #   チャット (SSE)
+│       ├── inventory/          #   在庫 CRUD + スキャン
+│       ├── recipes/            #   レシピ CRUD + 公開
+│       ├── beauty-log/         #   Beauty Log CRUD
+│       └── social/             #   SNS (フィード/いいね/コメント/フォロー)
+├── agent/                      # Python ADK エージェントサーバー
+│   ├── alcheme/
+│   │   ├── agents/             #   10 AIエージェント定義
+│   │   ├── prompts/            #   システムプロンプト
+│   │   ├── tools/              #   12 ツール関数
+│   │   └── schemas/            #   Pydantic スキーマ
+│   ├── tests/                  #   pytest (100+ tests)
+│   ├── server.py               #   FastAPI サーバー
+│   └── Dockerfile
+├── components/                 # React UIコンポーネント (30+)
+│   ├── ui/                     #   shadcn/ui ベースコンポーネント
+│   ├── auth/                   #   認証コンポーネント
+│   ├── beauty-log-*.tsx        #   Beauty Log関連
+│   ├── feed-post-card.tsx      #   SNSフィード関連
+│   ├── recipe-*.tsx            #   レシピ関連
+│   └── bottom-nav.tsx          #   ボトムナビゲーション
+├── hooks/                      # カスタムフック
+│   ├── use-chat.ts             #   チャット (SSE)
+│   ├── use-feed.ts             #   SNSフィード (SWR Infinite)
+│   ├── use-beauty-log.ts       #   Beauty Log
+│   └── use-inventory.ts        #   在庫管理
+├── types/                      # TypeScript 型定義
+├── lib/                        # ユーティリティ
+├── __tests__/                  # フロントエンドテスト (61+)
+├── docs/                       # ドキュメント
+├── .github/workflows/ci.yml    # CI/CD パイプライン
+├── Dockerfile                  # Web Dockerfile
+├── cloudbuild.yaml             # Cloud Build 設定
+└── firestore.rules             # Firestore セキュリティルール
 ```
 
-## Troubleshooting
+---
 
-### Firebase Admin SDK Issues
+## スクリプト一覧
 
-If you encounter `FIREBASE_PRIVATE_KEY` formatting issues:
+| コマンド | 説明 |
+|---------|------|
+| `npm run dev` | 開発サーバー起動 (Turbopack) |
+| `npm run build` | プロダクションビルド |
+| `npm run start` | プロダクションサーバー起動 |
+| `npm run lint` | ESLint 実行 |
+| `npm test` | Vitest 実行 |
+| `npm run test:watch` | Vitest ウォッチモード |
+| `npm run test:e2e` | Playwright E2Eテスト |
 
-1. Ensure the private key is wrapped in double quotes
-2. Use `\\n` for newlines in the `.env.local` file
-3. The code automatically replaces `\\n` with actual newlines
+---
 
-### Vertex AI Authentication
+## ライセンス
 
-If Vertex AI fails to authenticate:
+TBD
 
-1. Verify `GOOGLE_APPLICATION_CREDENTIALS` points to the correct service account key
-2. Ensure the service account has "Vertex AI User" role
-3. Check that the Vertex AI API is enabled in your Google Cloud project
+---
 
-### Next.js Build Errors
+## クレジット
 
-If the build fails:
-
-1. Run `npm install` to ensure all dependencies are installed
-2. Delete `.next` folder and rebuild
-3. Check TypeScript errors with `npx tsc --noEmit`
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-MIT
-
-## Support
-
-For issues and questions:
-- Check existing issues in the repository
-- Create a new issue with detailed description
-- Include error logs and environment details
-
-## Acknowledgments
-
-- Built with [Next.js](https://nextjs.org/)
-- UI components from [shadcn/ui](https://ui.shadcn.com/)
-- Powered by [Firebase](https://firebase.google.com/) and [Vertex AI](https://cloud.google.com/vertex-ai)
+- [Google ADK](https://google.github.io/adk-docs/) — Agent Development Kit
+- [Google Gemini](https://deepmind.google/technologies/gemini/) — AI Model (Flash / Pro / Image Generation)
+- [Firebase](https://firebase.google.com/) — Auth, Firestore, Cloud Storage
+- [Next.js](https://nextjs.org/) — React Framework
+- [shadcn/ui](https://ui.shadcn.com/) — UI Component Library
+- [Cloud Run](https://cloud.google.com/run) — Serverless Container Hosting
+- [Claude Code](https://claude.com/claude-code) — AI-Powered Development

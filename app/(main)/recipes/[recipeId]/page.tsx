@@ -1,7 +1,8 @@
 "use client";
 
-import { use, useState } from "react";
-import { ChevronDown, ChevronUp, Brain, Lightbulb } from "lucide-react";
+import { use, useState, useCallback } from "react";
+import { ChevronDown, ChevronUp, Brain, Lightbulb, Share2, Globe, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
 import { RecipeStepCard } from "@/components/recipe-step-card";
 import { RecipeFeedback } from "@/components/recipe-feedback";
@@ -10,8 +11,59 @@ import { useRecipe } from "@/hooks/use-recipe";
 
 export default function RecipeDetailPage({ params }: { params: Promise<{ recipeId: string }> }) {
   const { recipeId } = use(params);
-  const { recipe, isLoading, error, submitFeedback } = useRecipe(recipeId);
+  const { recipe, isLoading, error, submitFeedback, mutate, deleteRecipe } = useRecipe(recipeId);
   const [thinkingOpen, setThinkingOpen] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = useCallback(async () => {
+    if (deleting) return;
+    const ok = window.confirm("このレシピを削除しますか？この操作は取り消せません。");
+    if (!ok) return;
+    setDeleting(true);
+    await deleteRecipe();
+    setDeleting(false);
+  }, [deleting, deleteRecipe]);
+
+  const handlePublish = useCallback(async () => {
+    if (publishing) return;
+    setPublishing(true);
+    try {
+      const res = await fetch(`/api/recipes/${recipeId}/publish`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (res.status === 409) {
+        toast.info("このレシピは既に公開されています");
+        return;
+      }
+      if (!res.ok) throw new Error();
+      toast.success("レシピを公開しました！");
+      mutate();
+    } catch {
+      toast.error("公開に失敗しました");
+    } finally {
+      setPublishing(false);
+    }
+  }, [recipeId, publishing, mutate]);
+
+  const handleUnpublish = useCallback(async () => {
+    if (publishing) return;
+    setPublishing(true);
+    try {
+      const res = await fetch(`/api/recipes/${recipeId}/publish`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error();
+      toast.success("レシピを非公開にしました");
+      mutate();
+    } catch {
+      toast.error("非公開化に失敗しました");
+    } finally {
+      setPublishing(false);
+    }
+  }, [recipeId, publishing, mutate]);
 
   if (isLoading) {
     return (
@@ -87,6 +139,37 @@ export default function RecipeDetailPage({ params }: { params: Promise<{ recipeI
               )}
             </div>
           )}
+
+          {/* Publish & Delete buttons */}
+          <div className="flex items-center gap-2 pt-1">
+            {(recipe as any).published_post_id ? (
+              <button
+                onClick={handleUnpublish}
+                disabled={publishing}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-alcheme-sand text-xs text-alcheme-charcoal hover:bg-alcheme-sand/80 transition-colors btn-squishy disabled:opacity-50"
+              >
+                <Globe size={14} />
+                <span>公開中</span>
+              </button>
+            ) : (
+              <button
+                onClick={handlePublish}
+                disabled={publishing}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-neon-accent to-magic-pink text-xs text-white hover:opacity-90 transition-opacity btn-squishy disabled:opacity-50"
+              >
+                <Share2 size={14} />
+                <span>フィードに公開</span>
+              </button>
+            )}
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-50 text-xs text-red-500 hover:bg-red-100 transition-colors btn-squishy disabled:opacity-50"
+            >
+              <Trash2 size={14} />
+              <span>{deleting ? "削除中..." : "削除"}</span>
+            </button>
+          </div>
         </div>
 
         {/* Preview Image */}

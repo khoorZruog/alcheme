@@ -3,6 +3,7 @@ substitutions:
   _AR_REPO: alcheme
   _WEB_SERVICE: alcheme-web
   _AGENT_SERVICE: alcheme-agent
+  _TAG: latest
 
 steps:
   # ── Step 1: Build agent image ──
@@ -10,14 +11,14 @@ steps:
     args:
       - "build"
       - "-t"
-      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/agent:$SHORT_SHA"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/agent:${_TAG}"
       - "./agent"
 
   # ── Step 2: Push agent image ──
   - name: "gcr.io/cloud-builders/docker"
     args:
       - "push"
-      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/agent:$SHORT_SHA"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/agent:${_TAG}"
 
   # ── Step 3: Deploy agent to Cloud Run ──
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
@@ -27,12 +28,12 @@ steps:
       - "deploy"
       - "${_AGENT_SERVICE}"
       - "--image"
-      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/agent:$SHORT_SHA"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/agent:${_TAG}"
       - "--region"
       - "${_REGION}"
       - "--platform"
       - "managed"
-      - "--no-allow-unauthenticated"
+      - "--allow-unauthenticated"
       - "--port"
       - "8080"
       - "--memory"
@@ -57,7 +58,7 @@ steps:
     args:
       - "build"
       - "-t"
-      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/web:$SHORT_SHA"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/web:${_TAG}"
       - "--build-arg"
       - "NEXT_PUBLIC_FIREBASE_API_KEY=${_FIREBASE_API_KEY}"
       - "--build-arg"
@@ -78,7 +79,7 @@ steps:
   - name: "gcr.io/cloud-builders/docker"
     args:
       - "push"
-      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/web:$SHORT_SHA"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/web:${_TAG}"
 
   # ── Step 7: Deploy web to Cloud Run ──
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
@@ -86,20 +87,20 @@ steps:
     args:
       - "-c"
       - |
-        AGENT_URL=$(cat /workspace/agent_url.txt)
+        AGENT_URL=$$(cat /workspace/agent_url.txt)
         gcloud run deploy ${_WEB_SERVICE} \
-          --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/web:$SHORT_SHA \
+          --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/web:${_TAG} \
           --region=${_REGION} \
           --platform=managed \
           --allow-unauthenticated \
           --port=3000 \
           --memory=512Mi \
           --max-instances=5 \
-          --set-env-vars="NODE_ENV=production,ADK_AGENT_URL=$AGENT_URL,FIREBASE_PROJECT_ID=$PROJECT_ID,GOOGLE_CLOUD_PROJECT=$PROJECT_ID"
+          --set-env-vars="NODE_ENV=production,ADK_AGENT_URL=$$AGENT_URL,FIREBASE_PROJECT_ID=$PROJECT_ID,GOOGLE_CLOUD_PROJECT=$PROJECT_ID"
 
 images:
-  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/agent:$SHORT_SHA"
-  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/web:$SHORT_SHA"
+  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/agent:${_TAG}"
+  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/web:${_TAG}"
 
 options:
   logging: CLOUD_LOGGING_ONLY

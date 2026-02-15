@@ -106,11 +106,19 @@ export async function POST(request: NextRequest) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     const isAgentDown = message.includes('fetch failed') || message.includes('ECONNREFUSED');
 
+    // Pass through actual error detail for debugging
+    let errorMsg = 'Internal Server Error';
+    if (isAgentDown) {
+      errorMsg = 'Agent server unavailable';
+    } else if (message.includes('Agent responded with')) {
+      errorMsg = message.length > 200 ? message.slice(0, 200) : message;
+    }
+
     return NextResponse.json(
       {
         success: false,
         items: [],
-        error: isAgentDown ? 'Agent server unavailable' : 'Internal Server Error',
+        error: errorMsg,
       },
       { status: isAgentDown ? 503 : 500 },
     );

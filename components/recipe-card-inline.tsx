@@ -16,12 +16,11 @@ function hasValidRecipeId(id: string | undefined): boolean {
 
 export function RecipeCardInline({ recipe, previewImageUrl }: RecipeCardInlineProps) {
   const validId = hasValidRecipeId(recipe.id);
-  const Wrapper = validId ? Link : "div";
-  const wrapperProps = validId ? { href: `/recipes/${recipe.id}` } : {};
+  const href = validId ? `/recipes/${recipe.id}` : "/recipes";
 
   return (
-    <Wrapper {...(wrapperProps as any)}>
-      <div className={`glass-card bg-white/70 rounded-[24px] overflow-hidden border border-white shadow-soft-float ${validId ? "hover:shadow-card-hover" : ""} transition-shadow ${validId ? "btn-squishy" : ""}`}>
+    <Link href={href}>
+      <div className="glass-card bg-white/70 rounded-[24px] overflow-hidden border border-white shadow-soft-float hover:shadow-card-hover transition-shadow btn-squishy">
         {/* Preview Image */}
         {previewImageUrl && (
           <div className="relative w-full aspect-[4/3] overflow-hidden">
@@ -69,20 +68,18 @@ export function RecipeCardInline({ recipe, previewImageUrl }: RecipeCardInlinePr
           </div>
         )}
 
-        {/* CTA — only show link button when we have a valid Firestore recipe ID */}
-        {validId && (
-          <div className="px-5 pb-5">
-            <button className="btn-squishy w-full h-[48px] rounded-2xl relative overflow-hidden shadow-neon-glow group">
-              <div className="absolute inset-0 bg-gradient-to-r from-neon-accent via-purple-500 to-neon-accent opacity-90 group-hover:opacity-100 transition-opacity" />
-              <div className="relative z-10 flex items-center justify-center gap-2 text-white font-body font-bold tracking-wider">
-                <Play size={16} />
-                詳しく見る
-                <ChevronRight size={14} />
-              </div>
-            </button>
-          </div>
-        )}
+        {/* CTA */}
+        <div className="px-5 pb-5">
+          <button className="btn-squishy w-full h-[48px] rounded-2xl relative overflow-hidden shadow-neon-glow group">
+            <div className="absolute inset-0 bg-gradient-to-r from-neon-accent via-purple-500 to-neon-accent opacity-90 group-hover:opacity-100 transition-opacity" />
+            <div className="relative z-10 flex items-center justify-center gap-2 text-white font-body font-bold tracking-wider">
+              <Play size={16} />
+              {validId ? "詳しく見る" : "レシピ一覧で確認"}
+              <ChevronRight size={14} />
+            </div>
+          </button>
+        </div>
       </div>
-    </Wrapper>
+    </Link>
   );
 }

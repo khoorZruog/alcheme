@@ -110,10 +110,14 @@ export function useChat() {
                 );
               } else if (event.type === "error") {
                 setThinkingStatus(null);
+                console.error("[chat] Agent error:", event.data);
+                const errorDetail = typeof event.data === "string" && event.data.length > 0
+                  ? `エラーが発生しました: ${event.data}`
+                  : "すみません、エラーが発生しました。もう一度お試しください。";
                 setMessages((prev) =>
                   prev.map((m) =>
                     m.id === assistantId
-                      ? { ...m, content: m.content || "すみません、エラーが発生しました。もう一度お試しください。" }
+                      ? { ...m, content: m.content || errorDetail }
                       : m
                   )
                 );
@@ -149,5 +153,16 @@ export function useChat() {
     []
   );
 
-  return { messages, isLoading, sendMessage, inputValue, setInputValue, thinkingStatus };
+  const resetSession = useCallback(async () => {
+    try {
+      await fetch("/api/chat/session", { method: "DELETE" });
+    } catch {
+      // Ignore — session reset is best-effort
+    }
+    setMessages([INITIAL_MESSAGE]);
+    setThinkingStatus(null);
+    setIsLoading(false);
+  }, []);
+
+  return { messages, isLoading, sendMessage, inputValue, setInputValue, thinkingStatus, resetSession };
 }

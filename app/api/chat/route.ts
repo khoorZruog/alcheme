@@ -5,7 +5,7 @@ import { getAuthUserId } from "@/lib/api/auth";
 import { callAgentStream } from "@/lib/api/agent-client";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120; // Agent processing can take 60-90s for complex recipes
+export const maxDuration = 150; // Agent server has 90s deadline + buffer for SSE streaming
 
 export async function POST(request: NextRequest) {
   const userId = await getAuthUserId();

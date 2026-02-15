@@ -2,14 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sparkles, ScanLine, LayoutGrid, BookOpen, User } from "lucide-react";
+import { Sparkles, Newspaper, ScanLine, LayoutGrid, BookOpen, CalendarHeart } from "lucide-react";
 
 const tabs = [
   { id: "chat", label: "Concierge", icon: Sparkles, href: "/chat" },
+  { id: "feed", label: "Feed", icon: Newspaper, href: "/feed" },
   { id: "scan", label: "Scan", icon: ScanLine, href: "/scan" },
   { id: "inventory", label: "Vanity", icon: LayoutGrid, href: "/inventory" },
   { id: "recipes", label: "Recipe", icon: BookOpen, href: "/recipes" },
-  { id: "me", label: "Me", icon: User, href: "/settings" },
+  { id: "log", label: "Log", icon: CalendarHeart, href: "/beauty-log" },
 ] as const;
 
 export function BottomNav() {
@@ -24,13 +25,13 @@ export function BottomNav() {
             <Link
               key={id}
               href={href}
-              className={`relative flex items-center justify-center w-12 h-12 rounded-full transition-all duration-300 btn-squishy ${
+              className={`relative flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300 btn-squishy ${
                 isActive
                   ? "bg-white shadow-md text-neon-accent"
                   : "text-text-muted hover:text-text-ink"
               }`}
             >
-              <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
+              <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
               {isActive && (
                 <div className="absolute -bottom-1 w-1 h-1 rounded-full bg-neon-accent" />
               )}

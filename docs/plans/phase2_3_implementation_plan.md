@@ -1,7 +1,7 @@
 # Phase 2+3 統合実装計画
 
 **Date:** 2026-02-15
-**Status:** Batch 0.5 + 1 + 2 + 3 + 4 実装完了
+**Status:** Batch 0.5 + 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 実装完了 / Zenn記事・README.md 更新済み
 **前提:** Phase 1 MVP 完了済み
 
 ---
@@ -169,69 +169,110 @@ Next.js App Router のルートハンドラー関数を直接インポートし�
 
 ---
 
-## Batch 5: Beauty Log + Memory Keeper — P-High
+## Batch 5: Beauty Log + Memory Keeper — P-High ✅ 実装済み
 
 ### 概要
 日々のメイク記録機能。AI提案 vs 実績の差分学習基盤。
 
 ### 実装内容
 
-| # | タスク | ファイル |
-|---|--------|---------|
-| 1 | **Memory Keeper Agent** — セルフィーからメイク自動タグ付け | `agent/alcheme/agents/memory_keeper.py` (新規) |
-| 2 | **ツール: save_beauty_log, auto_tag_items** | `agent/alcheme/tools/beauty_log_tools.py` (新規) |
-| 3 | **Firestore: beauty_logs コレクション** — `users/{userId}/beauty_logs/{date}` | スキーマ定義 |
-| 4 | **Beauty Log ページ** — カレンダー表示 + 日別メイク記録 | `app/(main)/beauty-log/page.tsx` (新規) |
-| 5 | **AI提案 vs 実績 差分表示** — 提案時の記録と実行時の差分 | UIコンポーネント |
-| 6 | **BottomNav 更新** or **設定からのアクセス** — Beauty Log への導線 | ナビゲーション更新 |
+| # | タスク | 状態 |
+|---|--------|------|
+| 1 | Memory Keeper Agent (save/get beauty logs) | ✅ |
+| 2 | Tools: save_beauty_log, get_beauty_logs | ✅ |
+| 3 | Firestore: beauty_logs コレクション | ✅ |
+| 4 | Beauty Log ページ — カレンダー + リスト | ✅ |
+| 5 | Beauty Log 詳細/編集/削除ページ | ✅ |
+| 6 | BottomNav 更新 (Me → Log) + Settings gear icon | ✅ |
+| 7 | API Routes: CRUD (GET/POST/PUT/DELETE) | ✅ |
+| 8 | SWR Hook: useBeautyLogs, useBeautyLogEntry | ✅ |
+| 9 | Tests: hook + API + calendar | ✅ |
+
+### 延期項目（将来バッチ）
+- セルフィー + Gemini Vision 自動タグ付け
+- AI提案 vs 実績 差分可視化
+- VertexAiRagMemoryService 統合
 
 ### Firestore スキーマ
 ```
-users/{userId}/beauty_logs/{date}
-  - proposed_recipe_id: string     ← AI提案レシピID
-  - actual_recipe_id?: string      ← 実際に使ったレシピID
-  - selfie_url?: string            ← セルフィー画像URL
-  - auto_tags: string[]            ← AI判定のメイク要素
-  - user_note?: string             ← ユーザーメモ
-  - weather?: string               ← 天気情報
+users/{userId}/beauty_logs/{date}   ← doc ID = 日付文字列
+  - date: string                   ← "2026-02-15"
+  - recipe_id?: string             ← 使用レシピID
+  - recipe_name?: string           ← 表示用（非正規化）
+  - used_items: string[]           ← 使用アイテムID
+  - modifications: string[]        ← レシピからの変更点
+  - self_rating?: 1-5              ← 満足度
   - mood?: string                  ← 気分
+  - occasion?: string              ← TPO
+  - weather?: string               ← 天気
+  - user_note?: string             ← メモ
+  - auto_tags: string[]            ← 将来: AI自動タグ
   - created_at: Timestamp
+  - updated_at: Timestamp
 ```
 
 ---
 
-## Batch 6: SNS基本機能 — P-High
+## Batch 6: SNS基本機能 — P-High ✅ 実装済み
 
 ### 概要
 レシピ公開・共有、フォロー、いいね、コメントの基本SNS機能。
 
 ### 実装内容
 
-| # | タスク | ファイル |
-|---|--------|---------|
-| 1 | **Firestore SNSスキーマ** — posts, follows, likes, comments | スキーマ設計 |
-| 2 | **レシピ公開トグル** — 公開/非公開切り替え | `app/(main)/recipes/[recipeId]/page.tsx` |
-| 3 | **ソーシャルフィード** — 公開レシピのタイムライン | `app/(main)/feed/page.tsx` (新規) |
-| 4 | **フォロー機能** — ユーザーフォロー/アンフォロー | API + UI |
-| 5 | **いいね/保存** — レシピへのリアクション | API + UI |
-| 6 | **コメント** — テキストコメント + クイックリアクション | API + UI |
-| 7 | **AIキャラクターイメージ** — Simulatorと連携したプロフィール画像 | Gemini Image Generation |
-| 8 | **BottomNav or タブ追加** — フィードへの導線 | ナビゲーション更新 |
+| # | タスク | ファイル | Status |
+|---|--------|---------|--------|
+| 1 | **型定義** — SocialPost, SocialComment, FollowInfo, UserSocialStats, ReactionKey | `types/social.ts` (新規), `types/index.ts` | ✅ |
+| 2 | **Firestoreセキュリティルール** — social コレクション群のルール追加 | `firestore.rules` | ✅ |
+| 3 | **フィードAPI + 公開API** — フィード取得 (cursor-based) + レシピ公開 | `app/api/social/posts/route.ts` (新規) | ✅ |
+| 4 | **投稿詳細API** — 詳細取得 / 更新 / 削除 | `app/api/social/posts/[postId]/route.ts` (新規) | ✅ |
+| 5 | **いいねAPI** — トグルいいね (トランザクション) | `app/api/social/posts/[postId]/like/route.ts` (新規) | ✅ |
+| 6 | **コメントAPI** — 一覧取得 / 投稿 / 削除 | `app/api/social/posts/[postId]/comments/route.ts`, `[commentId]/route.ts` (新規) | ✅ |
+| 7 | **フォローAPI** — トグルフォロー (双方向書き込み) | `app/api/social/follow/route.ts` (新規) | ✅ |
+| 8 | **ユーザープロフィールAPI** — 公開プロフィール + ソーシャル統計 | `app/api/social/users/[userId]/route.ts` (新規) | ✅ |
+| 9 | **レシピ公開便利API** — publish/unpublish ショートカット | `app/api/recipes/[recipeId]/publish/route.ts` (新規) | ✅ |
+| 10 | **フィードフック** — useSWRInfinite による無限スクロール | `hooks/use-feed.ts` (新規) | ✅ |
+| 11 | **投稿詳細フック** — いいね/コメント操作 + オプティミスティック更新 | `hooks/use-post.ts` (新規) | ✅ |
+| 12 | **フォローフック** — フォロー状態管理 | `hooks/use-follow.ts` (新規) | ✅ |
+| 13 | **投稿カードコンポーネント** — Cookpad/WEAR風カードUI | `components/feed-post-card.tsx` (新規) | ✅ |
+| 14 | **コメントシートコンポーネント** — ボトムシート + クイックリアクション | `components/comments-sheet.tsx` (新規) | ✅ |
+| 15 | **フィードページ** — みんな/フォロー中タブ + 無限スクロール | `app/(main)/feed/page.tsx` (新規) | ✅ |
+| 16 | **投稿詳細ページ** — フル表示 + フォロー/いいね/コメント | `app/(main)/feed/[postId]/page.tsx` (新規) | ✅ |
+| 17 | **ユーザープロフィールページ** — 公開プロフィール + 投稿グリッド | `app/(main)/feed/user/[userId]/page.tsx` (新規) | ✅ |
+| 18 | **レシピ詳細公開ボタン** — 公開/非公開トグル追加 | `app/(main)/recipes/[recipeId]/page.tsx` | ✅ |
+| 19 | **BottomNav 6タブ化** — Feedタブ追加、アイコン縮小 | `components/bottom-nav.tsx` | ✅ |
+| 20 | **ローディングスケルトン** — FeedPostSkeleton, FeedGridSkeleton | `components/loading-skeleton.tsx` | ✅ |
+| 21 | **テスト** — API 4ファイル + Hook 1ファイル + Component 1ファイル (34テスト) | `__tests__/` 配下 | ✅ |
+
+### 設計方針
+- **Firestore構造:** 既存の user-scoped recipes とは別に `social/` トップレベルコレクションを使用。セキュリティルール分離 + 非正規化でN+1回避
+- **ページネーション:** cursor-based (`created_at` + `startAfter`)。Firestoreネイティブ、オフセットコスト無し
+- **著者情報:** 投稿ドキュメントに非正規化 (`author_display_name`, `author_photo_url`)。MVP許容範囲の古さ
+- **コメントUI:** 既存 `Sheet` コンポーネント (`side="bottom"`) ベースのボトムシート
+- **カウンター整合性:** Firestoreトランザクションで全てのincrement/decrement操作を保護
 
 ### Firestore スキーマ
 ```
-social/posts/{postId}
+social/posts/items/{postId}
   - user_id: string
+  - author_display_name: string
+  - author_photo_url: string | null
   - recipe_id: string
   - recipe_name: string
   - preview_image_url?: string
+  - steps_summary: string[]
+  - character_theme?: "cute" | "cool" | "elegant"
   - visibility: "public" | "private"
-  - like_count: number
-  - comment_count: number
-  - arrange_count: number
+  - tags: string[]
+  - like_count: number (default 0)
+  - comment_count: number (default 0)
+  - created_at: Timestamp
+  - updated_at: Timestamp
+
+social/follows/{userId}/following/{targetUserId}
   - created_at: Timestamp
 
-social/follows/{userId}/following/{followId}
+social/follows/{userId}/followers/{followerUserId}
   - created_at: Timestamp
 
 social/likes/{postId}/users/{userId}
@@ -239,45 +280,81 @@ social/likes/{postId}/users/{userId}
 
 social/comments/{postId}/items/{commentId}
   - user_id: string
+  - author_display_name: string
+  - author_photo_url?: string
   - text: string
   - type: "comment" | "reaction"
+  - reaction_key?: "suteki" | "manetai" | "sanko"
   - created_at: Timestamp
+
+social/user_stats/{userId}
+  - post_count: number
+  - follower_count: number
+  - following_count: number
 ```
+
+### 既知の制限事項 (MVP許容)
+1. **Firestore `in` クエリ制限:** "フォロー中"フィードは直近フォロー30ユーザーまで
+2. **非正規化データの古さ:** 著者名変更が過去投稿に伝搬しない (Batch 10 Cloud Functionで対応予定)
+3. **AIアバター生成:** 未実装 (オプション機能、将来バッチで対応可能)
 
 ---
 
-## Batch 7: Trend Hunter + TPO Tactician — P-Medium
+## Batch 7: Trend Hunter + TPO Tactician — P-Medium ✅ 実装済み
 
 ### 概要
 トレンド分析と天気・予定に基づくコンテキスト提案。
 
+### 設計方針
+- LlmAgent として実装（ParallelAgent/SequentialAgent はワークフローエージェントでLLM推論なし）
+- Trend Hunter: google_search を使ったSNSトレンド調査（ADK制約：google_search は単独agent）
+- TPO Tactician: OpenWeatherMap API + セッション状態ベースの予定管理（MVP）
+- カレンダーはMVPでは手動入力、将来Google Calendar API統合予定
+
 ### 実装内容
 
-| # | タスク | ファイル |
-|---|--------|---------|
-| 1 | **Trend Hunter Agent** — SNSトレンド解析 (ParallelAgent) | `agent/alcheme/agents/trend_hunter.py` (新規) |
-| 2 | **TPO Tactician Agent** — 天気API + カレンダー連携 (SequentialAgent) | `agent/alcheme/agents/tpo_tactician.py` (新規) |
-| 3 | **ツール: get_weather** — OpenWeatherMap API | `agent/alcheme/tools/weather_tools.py` (新規) |
-| 4 | **ツール: get_calendar_events** — Google Calendar API | `agent/alcheme/tools/calendar_tools.py` (新規) |
-| 5 | **Concierge ルーティング更新** — Trend/TPO エージェントへの委譲 | `agent/alcheme/agents/concierge.py` |
-| 6 | **天気表示UI** — チャット内に天気コンテキスト表示 | UIコンポーネント |
+| # | タスク | ファイル | Status |
+|---|--------|---------|--------|
+| 1 | **Trend Hunter Agent** — SNSトレンド解析 (LlmAgent + google_search) | `agent/alcheme/agents/trend_hunter.py` (新規) | ✅ |
+| 2 | **Trend Hunter プロンプト** — トレンド分析の指示 | `agent/alcheme/prompts/trend_hunter.py` (新規) | ✅ |
+| 3 | **TPO Tactician Agent** — 天気+予定ベース提案 (LlmAgent) | `agent/alcheme/agents/tpo_tactician.py` (新規) | ✅ |
+| 4 | **TPO Tactician プロンプト** — TPO分析の指示 | `agent/alcheme/prompts/tpo_tactician.py` (新規) | ✅ |
+| 5 | **ツール: get_weather** — OpenWeatherMap API | `agent/alcheme/tools/weather_tools.py` (新規) | ✅ |
+| 6 | **ツール: get_today_schedule** — セッション状態ベース予定取得 | `agent/alcheme/tools/calendar_tools.py` (新規) | ✅ |
+| 7 | **Concierge ルーティング更新** — Trend/TPO への委譲ルール追加 | `agent/alcheme/prompts/concierge.py` | ✅ |
+| 8 | **Root Agent 更新** — サブエージェント登録 | `agent/alcheme/agent.py` | ✅ |
+| 9 | **進捗メッセージ追加** — ツール/エージェント進捗 | `agent/server.py` | ✅ |
 
 ---
 
-## Batch 8: Profiler + Makeup Instructor — P-Medium
+## Batch 8: Profiler + Makeup Instructor — P-Medium ✅ 実装済み
 
 ### 概要
 ユーザー嗜好分析と手順ガイド強化。
 
+### 設計方針
+- MVP: Firestoreベースの頻度分析＋ヒューリスティック閾値（BigQuery ML K-meansはPhase 3で）
+- Profiler: Beauty Log + レシピ履歴から色/テクスチャ好み傾向を分析、マンネリ検知
+- Instructor: 代用品の発色/持続力/質感の差を比較し補正テクニックを提供
+
 ### 実装内容
 
-| # | タスク | ファイル |
-|---|--------|---------|
-| 1 | **Profiler Agent** — 嗜好クラスタリング、マンネリ検出 | `agent/alcheme/agents/profiler.py` (新規) |
-| 2 | **Makeup Instructor Agent** — 代用テクニックの詳細手順 | `agent/alcheme/agents/instructor.py` (新規) |
-| 3 | **ツール: analyze_preference_history** — Beauty Log分析 | `agent/alcheme/tools/profiler_tools.py` (新規) |
-| 4 | **使い切りチャレンジ** — プログレスバー + バッジ | `app/(main)/challenges/page.tsx` (新規) |
-| 5 | **Concierge プロンプト更新** — Profiler/Instructor への委譲 | `agent/alcheme/prompts/concierge.py` |
+| # | タスク | ファイル | Status |
+|---|--------|---------|--------|
+| 1 | **Profiler Agent** — 嗜好分析、マンネリ検出 | `agent/alcheme/agents/profiler.py` (新規) | ✅ |
+| 2 | **Profiler プロンプト** — 好み分析の指示 | `agent/alcheme/prompts/profiler.py` (新規) | ✅ |
+| 3 | **Makeup Instructor Agent** — 代用テクニックの詳細手順 | `agent/alcheme/agents/instructor.py` (新規) | ✅ |
+| 4 | **Instructor プロンプト** — 手順指導の指示 | `agent/alcheme/prompts/instructor.py` (新規) | ✅ |
+| 5 | **ツール: analyze_preference_history** — Beauty Log分析 | `agent/alcheme/tools/profiler_tools.py` (新規) | ✅ |
+| 6 | **ツール: get_substitution_technique** — 代用品比較 | `agent/alcheme/tools/instructor_tools.py` (新規) | ✅ |
+| 7 | **Concierge プロンプト更新** — Profiler/Instructor への委譲 | `agent/alcheme/prompts/concierge.py` | ✅ |
+| 8 | **Root Agent 更新** — サブエージェント登録 | `agent/alcheme/agent.py` | ✅ |
+| 9 | **進捗メッセージ追加** — ツール/エージェント進捗 | `agent/server.py` | ✅ |
+
+### 未実装（Phase 3 予定）
+- **使い切りチャレンジ** — プログレスバー + バッジ UI（`app/(main)/challenges/page.tsx`）
+- **BigQuery ML K-means** — Profiler の嗜好クラスタリング強化
+- **VertexAiRagMemoryService** — Beauty Log RAG ベース記憶
 
 ---
 
@@ -408,7 +485,10 @@ analytics/                        ← NEW: B2Bデータ (BigQuery連携)
 
 ## 次のアクション
 
-1. **Batch 1 (Simulator) と Batch 2 (Memory) を並行開始**
-2. Batch 3 (Tests + Deploy) はBatch 1/2 と並行で進行可能
-3. Batch 4 (楽天EC) は独立して開始可能
-4. Batch 5 (Beauty Log) は Batch 2 完了後に開始
+1. ~~Batch 0.5〜8: 全て実装完了~~ ✅
+2. ~~Zenn記事 (`docs/zenn_article.md`) を実装状況に合わせて更新~~ ✅
+3. ~~README.md をリポジトリルートに作成~~ ✅
+4. **E2Eテスト実施** — Playwright による主要フロー検証
+5. **GitHub リポジトリ公開** — E2E通過後にアップロード
+6. **Batch 9 (Phase 3 エージェント群)** — Content Curator, Health Monitor, Event Strategist, Product Scout
+7. **Batch 10 (B2B基盤 + SNS拡張)** — BigQuery, 商品ページ, つくれぽ

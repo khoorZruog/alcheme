@@ -7,14 +7,28 @@ Run with:  adk web alcheme
 from .agents.inventory import create_inventory_agent
 from .agents.product_search import create_product_search_agent
 from .agents.alchemist import create_alchemist_agent
+from .agents.memory_keeper import create_memory_keeper_agent
+from .agents.trend_hunter import create_trend_hunter_agent
+from .agents.tpo_tactician import create_tpo_tactician_agent
+from .agents.profiler import create_profiler_agent
+from .agents.instructor import create_instructor_agent
 from .agents.concierge import create_concierge_agent
 
 # Build sub-agents
 inventory_agent = create_inventory_agent()
 product_search_agent = create_product_search_agent()
 alchemist_agent = create_alchemist_agent()
+memory_keeper_agent = create_memory_keeper_agent()
+trend_hunter_agent = create_trend_hunter_agent()
+tpo_tactician_agent = create_tpo_tactician_agent()
+profiler_agent = create_profiler_agent()
+instructor_agent = create_instructor_agent()
 
 # Build root agent (Concierge) with sub-agents
 root_agent = create_concierge_agent(
-    sub_agents=[inventory_agent, product_search_agent, alchemist_agent],
+    sub_agents=[
+        inventory_agent, product_search_agent, alchemist_agent,
+        memory_keeper_agent, trend_hunter_agent, tpo_tactician_agent,
+        profiler_agent, instructor_agent,
+    ],
 )

@@ -1,0 +1,21 @@
+# gcloud builds submit — upload exclusions
+.git/
+.next/
+.venv/
+agent/.venv/
+node_modules/
+__pycache__/
+.claude/
+.vscode/
+.idea/
+docs/
+__tests__/
+coverage/
+*.db
+*.pem
+.env
+.env*.local
+.env.local
+npm-debug.log*
+.DS_Store
+.pytest_cache/

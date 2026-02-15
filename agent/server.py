@@ -162,12 +162,23 @@ _TOOL_PROGRESS_MAP: dict[str, str] = {
     "add_items_to_inventory": "在庫に追加中...",
     "analyze_product_compatibility": "手持ちコスメとの相性を分析中...",
     "compare_products_against_inventory": "商品を比較分析中...",
+    "save_beauty_log": "メイクログを保存中...",
+    "get_beauty_logs": "メイク履歴を取得中...",
+    "get_weather": "天気情報を取得中...",
+    "get_today_schedule": "今日の予定を確認中...",
+    "analyze_preference_history": "好みの傾向を分析中...",
+    "get_substitution_technique": "代用テクニックを検索中...",
 }
 
 _AGENT_PROGRESS_MAP: dict[str, str] = {
     "alchemist_agent": "メイクレシピを作成中...",
     "inventory_agent": "コスメ在庫を分析中...",
     "product_search_agent": "商品情報を検索中...",
+    "memory_keeper_agent": "メイクログを確認中...",
+    "trend_hunter_agent": "トレンドを分析中...",
+    "tpo_tactician_agent": "TPOに合わせた提案を準備中...",
+    "profiler_agent": "好み傾向を分析中...",
+    "instructor_agent": "メイク手順を作成中...",
 }
 
 
@@ -232,6 +243,44 @@ def _extract_recipe_id_from_event(event) -> str | None:
     except Exception as e:
         logger.warning("Failed to extract recipe_id from event: %s", e)
     return None
+
+
+def _fallback_save_recipe(recipe_block: dict, user_id: str) -> str | None:
+    """Save a recipe to Firestore when the agent didn't call save_recipe.
+
+    Returns the Firestore document ID on success, or None on failure.
+    """
+    try:
+        recipe = recipe_block.get("recipe", recipe_block)
+        if not isinstance(recipe, dict):
+            return None
+
+        # Normalize field names (same logic as recipe_tools.save_recipe)
+        if "title" in recipe and "recipe_name" not in recipe:
+            recipe["recipe_name"] = recipe.pop("title")
+        recipe.setdefault("recipe_name", "メイクレシピ")
+        recipe.setdefault("user_request", "")
+        recipe.setdefault("is_favorite", False)
+        recipe.setdefault("pro_tips", [])
+        recipe.setdefault("thinking_process", [])
+
+        # Preserve used_items from outer wrapper
+        if "used_items" in recipe_block and "used_items" not in recipe:
+            recipe["used_items"] = recipe_block["used_items"]
+
+        recipe["created_at"] = firestore_lib.SERVER_TIMESTAMP
+        recipe["updated_at"] = firestore_lib.SERVER_TIMESTAMP
+        recipe.pop("createdAt", None)
+        recipe.pop("updatedAt", None)
+
+        db = _get_firestore()
+        doc_ref = db.collection("users").document(user_id).collection("recipes").document()
+        doc_ref.set(recipe)
+        logger.info("Fallback saved recipe %s for user %s", doc_ref.id, user_id)
+        return doc_ref.id
+    except Exception as e:
+        logger.warning("Fallback recipe save failed: %s", e)
+        return None
 
 
 def _extract_json_blocks(text: str) -> list[dict]:
@@ -420,15 +469,29 @@ async def chat(req: ChatRequest):
 
     async def event_generator():
         """Generate SSE events from agent response."""
+        import time as _time
+        AGENT_DEADLINE = 90  # Max seconds for agent processing
+
         encoder = json.dumps
         full_text = ""
         saved_recipe_id: str | None = None
+        start_time = _time.monotonic()
         try:
             async for event in runner.run_async(
                 user_id=req.user_id,
                 session_id=session_id,
                 new_message=message,
             ):
+                # Safety: abort if processing exceeds deadline
+                if _time.monotonic() - start_time > AGENT_DEADLINE:
+                    logger.warning("Agent processing exceeded %ds deadline, aborting", AGENT_DEADLINE)
+                    error_data = encoder(
+                        {"type": "text_delta", "data": "処理に時間がかかりすぎたため中断しました。もう少し具体的にリクエストしてみてください。"},
+                        ensure_ascii=False,
+                    )
+                    yield f"data: {error_data}\n\n"
+                    break
+
                 # Emit progress events for tool calls / agent transfers
                 progress = _extract_progress_from_event(event)
                 if progress:
@@ -451,6 +514,12 @@ async def chat(req: ChatRequest):
             recipe_steps: list[dict] | None = None
             for block in json_blocks:
                 if isinstance(block, dict) and "recipe" in block:
+                    # Fallback save: if agent didn't call save_recipe, save it now
+                    if not saved_recipe_id and isinstance(block.get("recipe"), dict):
+                        fallback_id = _fallback_save_recipe(block, req.user_id)
+                        if fallback_id:
+                            saved_recipe_id = fallback_id
+
                     # Inject saved recipe_id so frontend can link to /recipes/{id}
                     if saved_recipe_id and isinstance(block.get("recipe"), dict):
                         block["recipe"]["id"] = saved_recipe_id
@@ -486,9 +555,28 @@ async def chat(req: ChatRequest):
                     logger.warning("Preview image generation failed: %s", preview_err)
 
         except Exception as e:
-            # If token limit exceeded, reset session and retry once
-            if "INVALID_ARGUMENT" in str(e) and "token" in str(e).lower():
+            # Determine if we should retry with a fresh session
+            error_str = str(e)
+            should_retry = False
+            if "INVALID_ARGUMENT" in error_str and "token" in error_str.lower():
+                should_retry = True
                 logger.warning("Token limit exceeded, resetting session %s and retrying", session_id)
+            else:
+                # If session has accumulated events, stale state may be the cause
+                try:
+                    err_session = await session_service.get_session(
+                        app_name=APP_NAME, user_id=req.user_id, session_id=session_id,
+                    )
+                    if err_session and len(err_session.events) > 2:
+                        should_retry = True
+                        logger.warning(
+                            "Error with existing session (%d events), resetting %s and retrying: %s",
+                            len(err_session.events), session_id, error_str[:200],
+                        )
+                except Exception:
+                    pass
+
+            if should_retry:
                 try:
                     # Extract memories before emergency reset
                     try:
@@ -530,6 +618,12 @@ async def chat(req: ChatRequest):
                     retry_steps: list[dict] | None = None
                     for block in retry_json_blocks:
                         if isinstance(block, dict) and "recipe" in block:
+                            # Fallback save in retry path
+                            if not retry_recipe_id and isinstance(block.get("recipe"), dict):
+                                fallback_id = _fallback_save_recipe(block, req.user_id)
+                                if fallback_id:
+                                    retry_recipe_id = fallback_id
+
                             if retry_recipe_id and isinstance(block.get("recipe"), dict):
                                 block["recipe"]["id"] = retry_recipe_id
                                 retry_steps = block["recipe"].get("steps")
@@ -584,6 +678,32 @@ async def chat(req: ChatRequest):
             "X-Accel-Buffering": "no",
         },
     )
+
+
+# ---------------------------------------------------------------------------
+# DELETE /chat/session — Reset chat session for a user
+# ---------------------------------------------------------------------------
+class DeleteSessionRequest(BaseModel):
+    user_id: str
+
+
+@app.post("/chat/session/delete", dependencies=[Depends(verify_api_key)])
+async def delete_chat_session(req: DeleteSessionRequest):
+    """Delete a user's chat session to allow a fresh start."""
+    session_id = f"chat-{req.user_id}"
+    try:
+        existing = await session_service.get_session(
+            app_name=APP_NAME, user_id=req.user_id, session_id=session_id,
+        )
+        if existing:
+            await session_service.delete_session(
+                app_name=APP_NAME, user_id=req.user_id, session_id=session_id,
+            )
+            return {"success": True, "message": f"Session {session_id} deleted"}
+        return {"success": True, "message": "No session found"}
+    except Exception as e:
+        logger.error("Failed to delete session %s: %s", session_id, e)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ---------------------------------------------------------------------------

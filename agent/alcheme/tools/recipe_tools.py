@@ -34,6 +34,16 @@ def save_recipe(recipe_json: str, tool_context: ToolContext) -> dict:
         user_id = tool_context.state.get("user:id", "test-user-001")
         recipe = json.loads(recipe_json)
 
+        # --- Unwrap nested structure ---
+        # The alchemist prompt specifies {"recipe": {...}, "used_items": [...], ...}
+        # Extract the inner recipe object if present
+        if "recipe" in recipe and isinstance(recipe["recipe"], dict):
+            inner = recipe["recipe"]
+            # Preserve used_items / validation at top level for reference
+            if "used_items" in recipe:
+                inner["used_items"] = recipe["used_items"]
+            recipe = inner
+
         # --- Normalize field names to match BFF expectations (snake_case) ---
         # Alchemist outputs "title" but BFF/frontend expects "recipe_name"
         if "title" in recipe and "recipe_name" not in recipe:

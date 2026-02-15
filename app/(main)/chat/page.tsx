@@ -1,6 +1,8 @@
 "use client";
 
 import { useRef, useEffect, useState } from "react";
+import Link from "next/link";
+import { Settings, RotateCcw } from "lucide-react";
 import { ChatMessage } from "@/components/chat-message";
 import { ChatInput } from "@/components/chat-input";
 import { QuickActionChips } from "@/components/quick-action-chips";
@@ -8,7 +10,7 @@ import { ThinkingIndicator } from "@/components/thinking-indicator";
 import { useChat } from "@/hooks/use-chat";
 
 export default function ChatPage() {
-  const { messages, isLoading, sendMessage, inputValue, setInputValue, thinkingStatus } = useChat();
+  const { messages, isLoading, sendMessage, inputValue, setInputValue, thinkingStatus, resetSession } = useChat();
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll on new messages
@@ -34,7 +36,23 @@ export default function ChatPage() {
             alche:me
           </h1>
         </div>
-        <div className="min-w-10" />
+        <div className="flex items-center gap-1">
+          <button
+            onClick={resetSession}
+            className="p-2 text-text-muted hover:text-text-ink transition-colors rounded-full"
+            aria-label="チャットをリセット"
+            title="チャットをリセット"
+          >
+            <RotateCcw size={18} />
+          </button>
+          <Link
+            href="/settings"
+            className="p-2 text-text-muted hover:text-text-ink transition-colors rounded-full"
+            aria-label="設定"
+          >
+            <Settings size={20} />
+          </Link>
+        </div>
       </header>
 
       {/* Messages */}
