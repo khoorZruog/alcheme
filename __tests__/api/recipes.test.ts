@@ -101,7 +101,7 @@ describe("GET /api/recipes", () => {
       ],
     });
 
-    const res = await getRecipes();
+    const res = await getRecipes(new NextRequest("http://localhost/api/recipes"));
     const body = await res.json();
 
     expect(res.status).toBe(200);
@@ -112,7 +112,7 @@ describe("GET /api/recipes", () => {
   it("returns 401 when unauthenticated", async () => {
     mockGetAuthUserId.mockResolvedValue(null);
 
-    const res = await getRecipes();
+    const res = await getRecipes(new NextRequest("http://localhost/api/recipes"));
     const body = await res.json();
 
     expect(res.status).toBe(401);

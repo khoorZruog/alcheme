@@ -35,6 +35,8 @@ export interface UserProfile {
     personalColor?: boolean;
     interests?: boolean;
   };
+  /** ベストコスメ — インベントリアイテムIDの配列 (max 10) */
+  bestCosme?: string[];
   onboardingCompleted: boolean;
   created_at?: string;
   updated_at?: string;

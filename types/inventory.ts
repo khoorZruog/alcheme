@@ -34,11 +34,48 @@ export interface RakutenCandidate {
   review_average?: number;
 }
 
-/** 在庫アイテム — Firestore: users/{userId}/inventory/{itemId} */
+/** 商品マスタ — Firestore: users/{userId}/products/{productId} */
+export interface Product {
+  id: string;
+  brand: string;
+  product_name: string;
+  category: CosmeCategory;
+  item_type: string;
+  color_code?: string;
+  color_name?: string;
+  color_description?: string;
+  texture: CosmeTexture;
+  stats?: CosmeStats;
+  rarity?: Rarity;
+  pao_months?: number;
+  price?: number;
+  product_url?: string;
+  image_url?: string;
+  rakuten_image_url?: string;
+  source: string;
+  confidence: Confidence;
+  created_at: string;
+  updated_at: string;
+}
+
+/** 在庫個体 — Firestore: users/{userId}/inventory/{itemId} */
+export interface InventoryInstance {
+  id: string;
+  product_id: string;
+  purchase_date?: string;
+  open_date?: string;
+  estimated_remaining: string;
+  memo?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/** UI用結合型 — API が返すフラット形式（従来の InventoryItem と互換） */
 export interface InventoryItem {
   id: string;
+  product_id?: string;
   category: CosmeCategory;
-  item_type: string;        // specific Appendix D type (e.g. "マスカラ")
+  item_type: string;
   brand: string;
   product_name: string;
   color_code?: string;
@@ -48,14 +85,16 @@ export interface InventoryItem {
   stats?: CosmeStats;
   rarity?: Rarity;
   estimated_remaining: string;
-  pao_months?: number;      // auto-derived from item_type
+  pao_months?: number;
+  purchase_date?: string;
   open_date?: string;
+  memo?: string;
   image_url?: string;
-  images?: string[];         // multiple image URLs
-  price?: number;            // Rakuten reference price
-  product_url?: string;      // Rakuten product URL
-  rakuten_image_url?: string; // Rakuten official image
-  candidates?: RakutenCandidate[]; // Pre-registration candidates
+  images?: string[];
+  price?: number;
+  product_url?: string;
+  rakuten_image_url?: string;
+  candidates?: RakutenCandidate[];
   confidence: Confidence;
   source: string;
   created_at: string;
@@ -79,3 +118,27 @@ export interface FirestoreTimestampLike {
   seconds: number;
   nanoseconds: number;
 }
+
+/** 型番グルーピング — brand + product_name で在庫アイテムをまとめる */
+export interface ProductGroup {
+  /** グループキー: `${brand}::${product_name}` */
+  groupKey: string;
+  brand: string;
+  productName: string;
+  category: CosmeCategory;
+  itemType: string;
+  /** 色バリアント (newest first) */
+  variants: InventoryItem[];
+  variantCount: number;
+  /** 代表アイテム (最新) — 画像・価格表示用 */
+  representative: InventoryItem;
+  /** 全バリアント中の最低残量% */
+  minRemaining: number;
+  /** 最新 created_at (ソート用) */
+  newestDate: string;
+}
+
+/** グリッドセルの判別共用体 — 単品 or グループ */
+export type GridEntry =
+  | { type: "single"; item: InventoryItem }
+  | { type: "group"; group: ProductGroup };

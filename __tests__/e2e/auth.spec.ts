@@ -10,8 +10,8 @@ test.describe("E2E-01: Authentication Flow", () => {
   test("login page renders correctly", async ({ page }) => {
     await page.goto("/login");
     await expect(page.locator("text=alche:me")).toBeVisible();
-    // Should have Google sign-in button
-    await expect(page.locator("button")).toBeVisible();
+    // Should have login button
+    await expect(page.getByRole("button", { name: "ログイン", exact: true })).toBeVisible();
   });
 
   test("login page has Google sign-in option", async ({ page }) => {

@@ -8,9 +8,56 @@ import { cn } from "@/lib/utils";
 import type { ChatMessage as ChatMessageType } from "@/types/chat";
 import { RecipeCardInline } from "@/components/recipe-card-inline";
 import type { RecipeResult, Recipe } from "@/types/recipe";
+import type { Components } from "react-markdown";
+
+const markdownComponents: Components = {
+  p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+  strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+  ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-1">{children}</ul>,
+  ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-1">{children}</ol>,
+  li: ({ children }) => <li>{children}</li>,
+  h1: ({ children }) => <p className="font-bold text-base mb-2">{children}</p>,
+  h2: ({ children }) => <p className="font-bold text-base mb-2">{children}</p>,
+  h3: ({ children }) => <p className="font-semibold mb-1">{children}</p>,
+  code: ({ children }) => (
+    <code className="bg-black/5 rounded px-1 py-0.5 text-xs">{children}</code>
+  ),
+  a: ({ href, children }) => (
+    <a href={href} className="text-neon-accent underline" target="_blank" rel="noopener noreferrer">{children}</a>
+  ),
+};
+
+interface ThemeSuggestion {
+  number: string;
+  name: string;
+  description: string;
+}
+
+/** Detect 1️⃣ 2️⃣ 3️⃣ theme suggestion pattern from concierge */
+function parseThemeSuggestions(text: string): { intro: string; themes: ThemeSuggestion[] } | null {
+  const themePattern = /([1-3]️⃣)\s*\*?\*?(.+?)\*?\*?\s*[—–\-]\s*(.+)/g;
+  const themes: ThemeSuggestion[] = [];
+  let match;
+  while ((match = themePattern.exec(text)) !== null) {
+    themes.push({
+      number: match[1],
+      name: match[2].replace(/\*+/g, "").trim(),
+      description: match[3].trim(),
+    });
+  }
+  if (themes.length < 2) return null;
+
+  // Extract intro text (everything before the first theme)
+  const firstThemeIdx = text.indexOf(themes[0].number);
+  const intro = firstThemeIdx > 0 ? text.slice(0, firstThemeIdx).trim() : "";
+
+  return { intro, themes };
+}
 
 interface ChatMessageProps {
   message: ChatMessageType;
+  onSendMessage?: (text: string) => void;
+  disabled?: boolean;
 }
 
 /** Strip ```json ... ``` and bare JSON blocks from text, extract recipe if found */
@@ -36,6 +83,19 @@ function parseMessageContent(raw: string): { text: string; recipe: Recipe | null
 
   // Also strip bare JSON objects that look like recipe/inventory dumps
   text = text.replace(/\{[\s\S]*?"(?:recipe|items|used_items|validation)"[\s\S]*?\}\s*$/gm, "");
+
+  // Strip thinking process sections that leaked into text
+  text = text.replace(/(?:^|\n)#+\s*思考プロセス[\s\S]*?(?=\n#+\s|\n\n[^#\s-\d]|$)/gm, "");
+  text = text.replace(/(?:^|\n)\*?\*?思考プロセス\*?\*?[:：][\s\S]*?(?=\n\n[^-\d\s]|\n#+|$)/gm, "");
+
+  // Strip numbered thinking process items (1. リクエスト分析..., 2. 在庫チェック... etc.)
+  text = text.replace(/(?:^|\n)\d+\.\s*\*?\*?(?:リクエスト分析|在庫チェック|不足分の特定|代用・重ね技|環境考慮|最終構成)\*?\*?[:：].*$/gm, "");
+
+  // Strip verbose step-by-step narration sections
+  text = text.replace(/(?:^|\n)#+\s*(?:ステップ|レシピステップ|メイク手順|各ステップ)[\s\S]*?(?=\n#+\s[^ス]|\n\n[^#\s-\d]|$)/gm, "");
+
+  // Strip pro tips sections from text (they belong in the recipe card)
+  text = text.replace(/(?:^|\n)#+\s*(?:プロからのアドバイス|プロのコツ|Pro Tips)[\s\S]*?(?=\n#+|\n\n[^-\s]|$)/gm, "");
 
   // Clean up excessive whitespace
   text = text.replace(/\n{3,}/g, "\n\n").trim();
@@ -64,19 +124,39 @@ function normalizeRecipe(r: Record<string, unknown>): Recipe {
   };
 }
 
-export function ChatMessage({ message }: ChatMessageProps) {
+export function ChatMessage({ message, onSendMessage, disabled }: ChatMessageProps) {
   const isUser = message.role === "user";
 
-  const { text, recipe } = useMemo(
+  const { text: rawText, recipe } = useMemo(
     () => (isUser ? { text: message.content, recipe: null } : parseMessageContent(message.content)),
     [message.content, isUser]
   );
+
+  // Detect tappable theme suggestions (only for completed assistant messages)
+  const themeSuggestions = useMemo(() => {
+    if (isUser || message.is_streaming || !rawText) return null;
+    return parseThemeSuggestions(rawText);
+  }, [rawText, isUser, message.is_streaming]);
 
   // Use recipe from SSE event data, or fall back to extracted from text
   // Always normalize to ensure id fallback exists
   const recipeData = message.data && "recipe" in message.data
     ? normalizeRecipe((message.data as RecipeResult).recipe as unknown as Record<string, unknown>)
     : recipe;
+
+  // When a recipe card exists, truncate text to a short intro to avoid wall-of-text
+  const text = useMemo(() => {
+    if (!recipeData || isUser || !rawText) return rawText;
+    // Keep only the first paragraph (before the first double-newline or after 200 chars)
+    const firstParagraph = rawText.split(/\n\n/)[0] || rawText;
+    if (firstParagraph.length <= 300) return firstParagraph;
+    // Truncate to ~200 chars at a sentence boundary
+    const truncated = firstParagraph.slice(0, 200);
+    const lastSentence = truncated.lastIndexOf("。");
+    const lastExcl = truncated.lastIndexOf("！");
+    const cutoff = Math.max(lastSentence, lastExcl);
+    return cutoff > 50 ? truncated.slice(0, cutoff + 1) : truncated + "…";
+  }, [rawText, recipeData, isUser]);
 
   // Preview image URL from SSE event
   const previewUrl = message.preview_image_url;
@@ -110,26 +190,39 @@ export function ChatMessage({ message }: ChatMessageProps) {
 
         {text && (
           <div className="chat-markdown leading-[1.75]">
-            <ReactMarkdown
-              components={{
-                p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-                ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-1">{children}</ul>,
-                ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-1">{children}</ol>,
-                li: ({ children }) => <li>{children}</li>,
-                h1: ({ children }) => <p className="font-bold text-base mb-2">{children}</p>,
-                h2: ({ children }) => <p className="font-bold text-base mb-2">{children}</p>,
-                h3: ({ children }) => <p className="font-semibold mb-1">{children}</p>,
-                code: ({ children }) => (
-                  <code className="bg-black/5 rounded px-1 py-0.5 text-xs">{children}</code>
-                ),
-                a: ({ href, children }) => (
-                  <a href={href} className="text-neon-accent underline" target="_blank" rel="noopener noreferrer">{children}</a>
-                ),
-              }}
-            >
-              {text}
-            </ReactMarkdown>
+            {themeSuggestions ? (
+              <>
+                {/* Intro text before theme options */}
+                {themeSuggestions.intro && (
+                  <ReactMarkdown components={markdownComponents}>
+                    {themeSuggestions.intro}
+                  </ReactMarkdown>
+                )}
+                {/* Tappable theme buttons */}
+                <div className="mt-3 space-y-2">
+                  {themeSuggestions.themes.map((theme, i) => (
+                    <button
+                      key={i}
+                      onClick={() => onSendMessage?.(`${i + 1}`)}
+                      disabled={disabled}
+                      className="w-full text-left glass-card bg-white/70 rounded-2xl p-3 border border-white/80 hover:border-neon-accent/40 hover:shadow-md transition-all btn-squishy disabled:opacity-50 disabled:pointer-events-none"
+                    >
+                      <div className="flex items-start gap-2">
+                        <span className="text-lg shrink-0">{theme.number}</span>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-sm text-text-ink">{theme.name}</p>
+                          <p className="text-xs text-text-muted mt-0.5 line-clamp-2">{theme.description}</p>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <ReactMarkdown components={markdownComponents}>
+                {text}
+              </ReactMarkdown>
+            )}
             {message.is_streaming && (
               <span className="inline-block w-1.5 h-4 ml-0.5 bg-neon-accent/60 animate-pulse rounded-sm" />
             )}

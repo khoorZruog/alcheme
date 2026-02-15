@@ -78,7 +78,7 @@ export function AvatarUpload({ photoURL, userId, onUploaded }: AvatarUploadProps
         className="relative h-20 w-20 rounded-full overflow-hidden group"
       >
         {photoURL ? (
-          <Image src={photoURL} alt="プロフィール写真" fill className="object-cover" />
+          <Image src={photoURL} alt="プロフィール写真" fill className="object-cover" unoptimized />
         ) : (
           <div className="h-full w-full bg-text-ink/10 flex items-center justify-center">
             <User className="h-10 w-10 text-text-ink/40" />

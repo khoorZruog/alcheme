@@ -50,7 +50,7 @@ export default function SettingsPage() {
 
   return (
     <div>
-      <PageHeader title="設定" />
+      <PageHeader title="設定" backHref="/chat" />
 
       <div className="px-4 py-4 space-y-2">
         {/* Profile Card */}
@@ -70,7 +70,7 @@ export default function SettingsPage() {
             <p className="text-xs text-text-muted">{basicParts.join(" · ")}</p>
           )}
           <Link
-            href="/settings/profile"
+            href="/profile"
             className="inline-block text-xs text-neon-accent font-medium hover:underline"
           >
             プロフィールを見る

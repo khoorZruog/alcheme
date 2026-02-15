@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { Play, ChevronRight } from "lucide-react";
+import { Play, ChevronRight, Heart } from "lucide-react";
 import type { Recipe } from "@/types/recipe";
 
 interface RecipeCardInlineProps {
-  recipe: Pick<Recipe, "id" | "recipe_name" | "match_score" | "steps">;
+  recipe: Pick<Recipe, "id" | "recipe_name" | "match_score" | "steps" | "is_favorite">;
   previewImageUrl?: string;
+  onToggleFavorite?: (recipeId: string) => void;
 }
 
 /** Check if recipe ID is a real Firestore document ID (not a client-generated fallback) */
@@ -14,7 +15,7 @@ function hasValidRecipeId(id: string | undefined): boolean {
   return !!id && !id.startsWith("recipe-");
 }
 
-export function RecipeCardInline({ recipe, previewImageUrl }: RecipeCardInlineProps) {
+export function RecipeCardInline({ recipe, previewImageUrl, onToggleFavorite }: RecipeCardInlineProps) {
   const validId = hasValidRecipeId(recipe.id);
   const href = validId ? `/recipes/${recipe.id}` : "/recipes";
 
@@ -34,11 +35,29 @@ export function RecipeCardInline({ recipe, previewImageUrl }: RecipeCardInlinePr
         )}
         {/* Header */}
         <div className="p-5 pb-3">
-          <div className="flex items-center gap-2 mb-2">
-            {recipe.match_score != null && (
-              <span className="bg-neon-accent/80 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-bold text-white border border-white/20">
-                MATCH {recipe.match_score}%
-              </span>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              {recipe.match_score != null && (
+                <span className="bg-neon-accent/80 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-bold text-white border border-white/20">
+                  MATCH {recipe.match_score}%
+                </span>
+              )}
+            </div>
+            {onToggleFavorite && validId && (
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onToggleFavorite(recipe.id);
+                }}
+                className="p-1.5 rounded-full hover:bg-pink-50 transition-colors"
+                aria-label={recipe.is_favorite ? "お気に入り解除" : "お気に入り登録"}
+              >
+                <Heart
+                  size={18}
+                  className={recipe.is_favorite ? "fill-pink-500 text-pink-500" : "text-gray-400"}
+                />
+              </button>
             )}
           </div>
           <h3 className="font-display font-bold text-xl text-text-ink">

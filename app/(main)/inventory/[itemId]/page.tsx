@@ -2,9 +2,10 @@
 
 import { use, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import Image from "next/image";
 import useSWR from "swr";
-import { MoreVertical, Pencil, Trash2, Package, ExternalLink } from "lucide-react";
+import { MoreVertical, Pencil, Trash2, Package, ExternalLink, Search, BookOpen, ChevronRight, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -16,6 +17,7 @@ import { ItemEditSheet } from "@/components/item-edit-sheet";
 import { DetailSkeleton } from "@/components/loading-skeleton";
 import { fetcher } from "@/lib/api/fetcher";
 import type { InventoryItem } from "@/types/inventory";
+import type { Recipe } from "@/types/recipe";
 
 export default function ItemDetailPage({ params }: { params: Promise<{ itemId: string }> }) {
   const { itemId } = use(params);
@@ -24,6 +26,12 @@ export default function ItemDetailPage({ params }: { params: Promise<{ itemId: s
     `/api/inventory?_id=${itemId}`,
     fetcher
   );
+  const { data: recipesData } = useSWR<{ recipes: Recipe[] }>(
+    `/api/recipes?item_id=${itemId}`,
+    fetcher
+  );
+  const relatedRecipes = recipesData?.recipes ?? [];
+
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -124,14 +132,18 @@ export default function ItemDetailPage({ params }: { params: Promise<{ itemId: s
               </span>
             )}
           </div>
-          <p className="text-xs text-alcheme-muted uppercase tracking-wider mt-2">{item.brand}</p>
-          <p className="text-lg font-display font-bold text-alcheme-charcoal">{item.product_name}</p>
-          {item.color_code && (
-            <p className="text-sm text-alcheme-charcoal">
-              {item.color_code}{item.color_name ? ` ${item.color_name}` : ""}
+          <p className="text-[10px] text-text-muted font-bold uppercase tracking-wider mt-2">{item.brand}</p>
+          <p className="text-xl font-display italic font-bold text-text-ink">{item.product_name}</p>
+          {(item.color_code || item.color_name) && (
+            <p className="text-sm font-bold mt-1">
+              {item.color_code && <span className="text-neon-accent">#{item.color_code}</span>}
+              {item.color_code && item.color_name && " "}
+              {item.color_name && <span className="text-text-ink">{item.color_name}</span>}
             </p>
           )}
-          <p className="text-sm text-alcheme-muted">{item.color_description}</p>
+          {item.color_description && (
+            <p className="text-xs text-text-muted mt-0.5">{item.color_description}</p>
+          )}
         </div>
 
         {/* Stats */}
@@ -167,18 +179,68 @@ export default function ItemDetailPage({ params }: { params: Promise<{ itemId: s
           </div>
         </div>
 
-        {/* Rakuten link */}
-        {item.product_url && (
+        {/* Rakuten links */}
+        <div className="flex flex-col gap-2">
+          {item.product_url && item.product_url.includes('rakuten.co.jp') && (
+            <a
+              href={item.product_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-sm text-neon-accent font-bold hover:underline"
+            >
+              <ExternalLink className="h-4 w-4" />
+              楽天で見る
+            </a>
+          )}
           <a
-            href={item.product_url}
+            href={`https://search.rakuten.co.jp/search/mall/${encodeURIComponent(`${item.brand} ${item.product_name}${item.color_name ? ` ${item.color_name}` : ''}`)}/`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 text-sm text-alcheme-rose hover:underline"
+            className="flex items-center gap-2 text-sm text-text-muted hover:text-text-ink transition"
           >
-            <ExternalLink className="h-4 w-4" />
-            楽天で見る
+            <Search className="h-4 w-4" />
+            楽天で探す
           </a>
-        )}
+        </div>
+        {/* Related Recipes */}
+        <div>
+          <p className="text-sm font-medium text-alcheme-charcoal mb-2">
+            <BookOpen className="h-4 w-4 inline mr-1" />
+            このアイテムを使ったレシピ
+          </p>
+          {relatedRecipes.length === 0 ? (
+            <p className="text-xs text-text-muted py-2">まだレシピがありません</p>
+          ) : (
+            <div className="space-y-2">
+              {relatedRecipes.map((recipe) => (
+                <Link
+                  key={recipe.id}
+                  href={`/recipes/${recipe.id}`}
+                  className="flex items-center gap-3 p-3 rounded-2xl bg-gray-50 hover:bg-gray-100 transition btn-squishy"
+                >
+                  {recipe.preview_image_url ? (
+                    <img src={recipe.preview_image_url} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                  ) : (
+                    <div className="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center shrink-0">
+                      <BookOpen className="h-4 w-4 text-text-muted" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-text-ink truncate">{recipe.recipe_name}</p>
+                    <div className="flex items-center gap-2 text-[10px] text-text-muted mt-0.5">
+                      {recipe.match_score != null && <span>再現度 {recipe.match_score}%</span>}
+                      <span>{new Date(recipe.created_at).toLocaleDateString("ja-JP")}</span>
+                      {recipe.feedback?.user_rating === "liked" && (
+                        <Heart className="h-3 w-3 text-red-400 fill-current" />
+                      )}
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-text-muted shrink-0" />
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Edit Sheet */}

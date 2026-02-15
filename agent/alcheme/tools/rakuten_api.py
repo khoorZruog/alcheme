@@ -6,9 +6,12 @@ Docstrings are used as tool descriptions by ADK.
 import os
 import re
 
+from urllib.parse import urlparse
+
 import requests
 
-RAKUTEN_API_URL = "https://app.rakuten.co.jp/services/api/IchibaItem/Search/20220601"
+RAKUTEN_API_URL = "https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20220601"
+_DEFAULT_REFERER = "https://alcheme-web-x3hwwomrxa-an.a.run.app/"
 
 # Regex patterns to extract color code and name from Rakuten product titles
 # e.g. "リップモンスター 03 陽炎" → code="03", name="陽炎"
@@ -42,21 +45,28 @@ def search_rakuten_api(keyword: str) -> dict:
         A dict with product search results including name, price, and URL.
     """
     app_id = os.environ.get("RAKUTEN_APP_ID")
-    if not app_id:
-        return {"status": "error", "message": "RAKUTEN_APP_ID is not configured"}
+    access_key = os.environ.get("RAKUTEN_ACCESS_KEY")
+    if not app_id or not access_key:
+        return {"status": "error", "message": "RAKUTEN_APP_ID and RAKUTEN_ACCESS_KEY must be configured"}
 
     try:
         params = {
             "applicationId": app_id,
+            "accessKey": access_key,
             "keyword": keyword,
-            "genreId": "555086",  # 美容・コスメ・香水
             "hits": 5,
             "sort": "standard",
             "format": "json",
             "formatVersion": "2",
             "imageFlag": 1,
         }
-        resp = requests.get(RAKUTEN_API_URL, params=params, timeout=10)
+        referer = os.environ.get("RAKUTEN_REFERER_URL", _DEFAULT_REFERER)
+        parsed = urlparse(referer)
+        headers = {
+            "Referer": referer,
+            "Origin": f"{parsed.scheme}://{parsed.netloc}",
+        }
+        resp = requests.get(RAKUTEN_API_URL, params=params, headers=headers, timeout=10)
         resp.raise_for_status()
         data = resp.json()
 
@@ -99,7 +109,8 @@ def search_rakuten_for_candidates(
         dict with "candidates" list of matching products.
     """
     app_id = os.environ.get("RAKUTEN_APP_ID")
-    if not app_id:
+    access_key = os.environ.get("RAKUTEN_ACCESS_KEY")
+    if not app_id or not access_key:
         return {"candidates": []}
 
     # Build keyword — brand + product_name, optionally color
@@ -110,15 +121,21 @@ def search_rakuten_for_candidates(
     try:
         params = {
             "applicationId": app_id,
+            "accessKey": access_key,
             "keyword": keyword,
-            "genreId": "555086",
             "hits": 5,
             "sort": "standard",
             "format": "json",
             "formatVersion": "2",
             "imageFlag": 1,
         }
-        resp = requests.get(RAKUTEN_API_URL, params=params, timeout=10)
+        referer = os.environ.get("RAKUTEN_REFERER_URL", _DEFAULT_REFERER)
+        parsed = urlparse(referer)
+        headers = {
+            "Referer": referer,
+            "Origin": f"{parsed.scheme}://{parsed.netloc}",
+        }
+        resp = requests.get(RAKUTEN_API_URL, params=params, headers=headers, timeout=10)
         resp.raise_for_status()
         data = resp.json()
 

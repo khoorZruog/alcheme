@@ -141,15 +141,15 @@ export async function DELETE(
     }
 
     await adminDb.runTransaction(async (tx) => {
-      tx.delete(postRef(postId));
-
-      // Decrement user stats
+      // All reads must come before writes
       const statsRef = adminDb
         .collection('social')
         .doc('user_stats')
         .collection('items')
         .doc(userId);
       const statsDoc = await tx.get(statsRef);
+
+      tx.delete(postRef(postId));
       if (statsDoc.exists) {
         const current = statsDoc.data()?.post_count || 0;
         tx.update(statsRef, { post_count: Math.max(0, current - 1) });

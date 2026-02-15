@@ -2,15 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sparkles, Newspaper, ScanLine, LayoutGrid, BookOpen, CalendarHeart } from "lucide-react";
+import { Sparkles, LayoutGrid, BookOpen, ShoppingBag, CalendarHeart } from "lucide-react";
 
 const tabs = [
-  { id: "chat", label: "Concierge", icon: Sparkles, href: "/chat" },
-  { id: "feed", label: "Feed", icon: Newspaper, href: "/feed" },
-  { id: "scan", label: "Scan", icon: ScanLine, href: "/scan" },
+  { id: "chat", label: "AI美容部員", icon: Sparkles, href: "/chat" },
   { id: "inventory", label: "Vanity", icon: LayoutGrid, href: "/inventory" },
   { id: "recipes", label: "Recipe", icon: BookOpen, href: "/recipes" },
-  { id: "log", label: "Log", icon: CalendarHeart, href: "/beauty-log" },
+  { id: "suggestions", label: "買い足し", icon: ShoppingBag, href: "/suggestions" },
+  { id: "log", label: "日記", icon: CalendarHeart, href: "/beauty-log" },
 ] as const;
 
 export function BottomNav() {

@@ -9,6 +9,9 @@ export interface SocialPost {
   recipe_id: string;
   recipe_name: string;
   preview_image_url?: string;
+  /** Full recipe steps for detail view */
+  steps?: import("@/types/recipe").RecipeStep[];
+  /** Short text summaries for card view (first 3 steps) */
   steps_summary: string[];
   character_theme?: "cute" | "cool" | "elegant";
   visibility: "public" | "private";
@@ -46,6 +49,15 @@ export interface UserSocialStats {
   post_count: number;
   follower_count: number;
   following_count: number;
+  total_likes_received: number;
+}
+
+/** Best cosme item for public display */
+export interface BestCosmeItem {
+  id: string;
+  product_name: string;
+  brand: string;
+  image_url?: string;
 }
 
 /** Public user profile shown on social pages */
@@ -59,6 +71,19 @@ export interface PublicUserProfile {
   interests: string[];
   stats: UserSocialStats;
   is_following: boolean;
+  gender: string | null;
+  age_range: string | null;
+  skin_tone: string | null;
+  face_type: string | null;
+  concerns: string[];
+  social_links?: {
+    twitter?: string;
+    instagram?: string;
+    youtube?: string;
+    tiktok?: string;
+    website?: string;
+  };
+  best_cosme?: BestCosmeItem[];
 }
 
 /** Quick reaction stamp definitions */

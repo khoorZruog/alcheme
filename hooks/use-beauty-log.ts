@@ -2,28 +2,62 @@
 
 import { useState, useCallback } from "react";
 import useSWR from "swr";
+import useSWRInfinite from "swr/infinite";
 import { fetcher } from "@/lib/api/fetcher";
 import { toast } from "sonner";
 import type { BeautyLogEntry } from "@/types/beauty-log";
+
+export type BeautyLogViewMode = "calendar" | "timeline";
 
 export function useBeautyLogs(initialMonth?: string) {
   const now = new Date();
   const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const [selectedMonth, setSelectedMonth] = useState(initialMonth ?? defaultMonth);
+  const [viewMode, setViewMode] = useState<BeautyLogViewMode>("calendar");
 
   const { data, error, isLoading, mutate } = useSWR<{
     logs: BeautyLogEntry[];
     count: number;
   }>(`/api/beauty-log?month=${selectedMonth}`, fetcher);
 
+  // Timeline mode: paginated infinite scroll
+  const PAGE_SIZE = 20;
+  const {
+    data: timelinePages,
+    error: timelineError,
+    isLoading: timelineLoading,
+    size: timelineSize,
+    setSize: setTimelineSize,
+    mutate: mutateTimeline,
+  } = useSWRInfinite<{ logs: BeautyLogEntry[]; count: number }>(
+    (pageIndex) =>
+      viewMode === "timeline"
+        ? `/api/beauty-log?mode=timeline&limit=${PAGE_SIZE}&offset=${pageIndex * PAGE_SIZE}`
+        : null,
+    fetcher
+  );
+
+  const timelineLogs = timelinePages?.flatMap((p) => p.logs) ?? [];
+  const hasMore = timelinePages
+    ? timelinePages[timelinePages.length - 1]?.logs.length === PAGE_SIZE
+    : false;
+
   return {
     logs: data?.logs ?? [],
     count: data?.count ?? 0,
     isLoading,
     error,
-    mutate: () => mutate(),
+    mutate: () => { mutate(); mutateTimeline(); },
     selectedMonth,
     setSelectedMonth,
+    viewMode,
+    setViewMode,
+    // Timeline
+    timelineLogs,
+    timelineLoading,
+    timelineError,
+    hasMore,
+    loadMore: () => setTimelineSize(timelineSize + 1),
   };
 }
 

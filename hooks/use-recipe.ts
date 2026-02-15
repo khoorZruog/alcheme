@@ -50,6 +50,24 @@ export function useRecipe(recipeId: string) {
     [recipeId, mutate]
   );
 
+  const toggleFavorite = useCallback(async () => {
+    mutate(
+      (prev) =>
+        prev
+          ? { recipe: { ...prev.recipe, is_favorite: !prev.recipe.is_favorite } }
+          : prev,
+      false
+    );
+    try {
+      const res = await fetch(`/api/recipes/${recipeId}/favorite`, { method: "POST" });
+      if (!res.ok) throw new Error("Favorite toggle failed");
+    } catch {
+      toast.error("お気に入りの更新に失敗しました");
+      mutate();
+    }
+    mutate();
+  }, [recipeId, mutate]);
+
   const deleteRecipe = useCallback(async () => {
     try {
       const res = await fetch(`/api/recipes/${recipeId}`, { method: "DELETE" });
@@ -67,6 +85,7 @@ export function useRecipe(recipeId: string) {
     error,
     mutate: () => mutate(),
     submitFeedback,
+    toggleFavorite,
     deleteRecipe,
   };
 }

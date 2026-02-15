@@ -3,6 +3,7 @@ export interface BeautyLogEntry {
   date: string; // "2026-02-15"
   recipe_id?: string; // Recipe used (if any)
   recipe_name?: string; // Denormalized for display
+  preview_image_url?: string; // Recipe preview image (cached)
   used_items: string[]; // Inventory item IDs actually used
   modifications: string[]; // Free-text changes from recipe
   self_rating?: 1 | 2 | 3 | 4 | 5; // Satisfaction score
@@ -10,6 +11,7 @@ export interface BeautyLogEntry {
   occasion?: string; // TPO (e.g., "仕事", "デート")
   weather?: string; // 天気
   user_note?: string; // Free-text memo
+  photos: string[]; // User-uploaded photos
   auto_tags: string[]; // Future: AI-detected tags
   selfie_url?: string; // Future: selfie image
   created_at: string;

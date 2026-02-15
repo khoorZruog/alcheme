@@ -32,6 +32,7 @@ from google.genai import types
 from google.cloud import firestore as firestore_lib
 
 from alcheme.agent import root_agent
+from alcheme.agents.product_search import create_product_search_agent
 from alcheme.tools.rakuten_api import search_rakuten_for_candidates
 from alcheme.tools.simulator_tools import generate_preview_image
 
@@ -130,6 +131,24 @@ class ChatRequest(BaseModel):
     session_id: str | None = None
     image_base64: str | None = None
     image_mime_type: str | None = None
+
+
+class ProductSearchRequest(BaseModel):
+    keyword: str
+    user_id: str
+
+
+class EnhanceRecipeRequest(BaseModel):
+    user_id: str
+    steps: list[dict[str, Any]]
+    context: dict[str, Any] | None = None
+
+
+class GenerateImageRequest(BaseModel):
+    recipe_id: str
+    user_id: str
+    steps: list[dict[str, Any]]
+    theme: str = "cute"
 
 
 # ---------------------------------------------------------------------------
@@ -509,9 +528,14 @@ async def chat(req: ChatRequest):
                     data = encoder({"type": "text_delta", "data": text}, ensure_ascii=False)
                     yield f"data: {data}\n\n"
 
+            if not full_text:
+                logger.warning("Agent produced no text output for user %s (session %s). Events may have been tool-only.", req.user_id, session_id)
+
             # After all events, check for recipe JSON in the full text
             json_blocks = _extract_json_blocks(full_text)
             recipe_steps: list[dict] | None = None
+            if not json_blocks:
+                logger.info("No JSON blocks found in agent output (%d chars). Recipe card will not be displayed.", len(full_text))
             for block in json_blocks:
                 if isinstance(block, dict) and "recipe" in block:
                     # Fallback save: if agent didn't call save_recipe, save it now
@@ -535,6 +559,7 @@ async def chat(req: ChatRequest):
                 progress_data = encoder({"type": "progress", "data": "仕上がりプレビューを生成中..."}, ensure_ascii=False)
                 yield f"data: {progress_data}\n\n"
                 try:
+                    logger.info("Starting preview image generation for recipe %s (%d steps)", saved_recipe_id, len(recipe_steps))
                     preview_result = await asyncio.wait_for(
                         generate_preview_image(
                             recipe_id=saved_recipe_id,
@@ -549,10 +574,14 @@ async def chat(req: ChatRequest):
                             ensure_ascii=False,
                         )
                         yield f"data: {preview_data}\n\n"
+                    else:
+                        logger.warning("Preview image generation returned error: %s", preview_result.get("error", "unknown"))
                 except asyncio.TimeoutError:
                     logger.warning("Preview image generation timed out for recipe %s", saved_recipe_id)
                 except Exception as preview_err:
                     logger.warning("Preview image generation failed: %s", preview_err)
+            elif saved_recipe_id and not recipe_steps:
+                logger.info("Recipe %s saved but no steps extracted from JSON — skipping preview image", saved_recipe_id)
 
         except Exception as e:
             # Determine if we should retry with a fresh session
@@ -704,6 +733,167 @@ async def delete_chat_session(req: DeleteSessionRequest):
     except Exception as e:
         logger.error("Failed to delete session %s: %s", session_id, e)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ---------------------------------------------------------------------------
+# POST /search/product
+# ---------------------------------------------------------------------------
+@app.post("/search/product", dependencies=[Depends(verify_api_key)])
+async def search_product(req: ProductSearchRequest):
+    """Search for cosmetic product info using Google Search via the product_search_agent."""
+    session_id = f"search-{uuid.uuid4().hex[:8]}"
+
+    session = await session_service.create_session(
+        app_name=APP_NAME,
+        user_id=req.user_id,
+        session_id=session_id,
+        state=_build_user_state(req.user_id),
+    )
+
+    # Create a dedicated runner for the product_search_agent
+    product_agent = create_product_search_agent()
+    search_runner = Runner(
+        agent=product_agent,
+        app_name=APP_NAME,
+        session_service=session_service,
+    )
+
+    message = types.Content(
+        role="user",
+        parts=[types.Part(text=f"以下のコスメ商品を検索して、正確な商品情報をJSON形式で返してください: {req.keyword}")],
+    )
+
+    full_text = ""
+    try:
+        async for event in search_runner.run_async(
+            user_id=req.user_id,
+            session_id=session_id,
+            new_message=message,
+        ):
+            text = _extract_text_from_event(event)
+            if text:
+                full_text += text
+    except Exception as e:
+        logger.error("Product search agent error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
+
+    # Parse structured output
+    json_blocks = _extract_json_blocks(full_text)
+
+    results = []
+    for block in json_blocks:
+        if isinstance(block, dict):
+            # Handle {search_result: {...}, alternatives: [...]} format
+            sr = block.get("search_result")
+            if sr and isinstance(sr, dict):
+                results.append(sr)
+            alts = block.get("alternatives", [])
+            if isinstance(alts, list):
+                results.extend(alts)
+            # Also handle direct item format
+            if "brand" in block and "product_name" in block:
+                results.append(block)
+
+    return {
+        "success": True,
+        "results": results,
+        "count": len(results),
+        "raw_text": full_text,
+    }
+
+
+# ---------------------------------------------------------------------------
+# POST /enhance-recipe
+# ---------------------------------------------------------------------------
+@app.post("/enhance-recipe", dependencies=[Depends(verify_api_key)])
+async def enhance_recipe(req: EnhanceRecipeRequest):
+    """Generate recipe name, pro tips, and thinking process from steps."""
+    session_id = f"enhance-{uuid.uuid4().hex[:8]}"
+
+    session = await session_service.create_session(
+        app_name=APP_NAME,
+        user_id=req.user_id,
+        session_id=session_id,
+        state=_build_user_state(req.user_id),
+    )
+
+    steps_desc = "\n".join(
+        f"- STEP {i+1}: {s.get('area', '')} / {s.get('brand', '')} {s.get('item_name', '')} — {s.get('instruction', '')}"
+        for i, s in enumerate(req.steps)
+    )
+    context_desc = ""
+    if req.context:
+        if req.context.get("occasion"):
+            context_desc += f"\nシーン: {req.context['occasion']}"
+        if req.context.get("weather"):
+            context_desc += f"\n天気: {req.context['weather']}"
+
+    prompt = f"""以下のメイクレシピのステップを分析して、以下のJSON形式で回答してください:
+{{
+  "recipe_name": "レシピのテーマ名（短く魅力的に）",
+  "pro_tips": ["プロのコツ1", "プロのコツ2", "プロのコツ3"],
+  "thinking_process": ["使用コスメの色味の分析", "テクスチャバランスの評価"]
+}}
+
+ステップ:
+{steps_desc}
+{context_desc}
+
+JSON形式のみで回答してください。"""
+
+    message = types.Content(
+        role="user",
+        parts=[types.Part(text=prompt)],
+    )
+
+    full_text = ""
+    try:
+        async for event in runner.run_async(
+            user_id=req.user_id,
+            session_id=session_id,
+            new_message=message,
+        ):
+            text = _extract_text_from_event(event)
+            if text:
+                full_text += text
+    except Exception as e:
+        logger.error("Enhance recipe error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
+
+    # Parse JSON from response
+    json_blocks = _extract_json_blocks(full_text)
+    if json_blocks and isinstance(json_blocks[0], dict):
+        return json_blocks[0]
+
+    return {
+        "recipe_name": "",
+        "pro_tips": [],
+        "thinking_process": [],
+    }
+
+
+# ---------------------------------------------------------------------------
+# POST /generate-image
+# ---------------------------------------------------------------------------
+@app.post("/generate-image", dependencies=[Depends(verify_api_key)])
+async def generate_image_endpoint(req: GenerateImageRequest):
+    """Generate a preview image for a recipe."""
+    try:
+        result = await asyncio.wait_for(
+            generate_preview_image(
+                recipe_id=req.recipe_id,
+                user_id=req.user_id,
+                steps=req.steps,
+                theme=req.theme,
+            ),
+            timeout=180,
+        )
+        return result
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="Image generation timed out")
+    except Exception as e:
+        logger.error("Generate image error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Image generation failed: {str(e)}")
 
 
 # ---------------------------------------------------------------------------

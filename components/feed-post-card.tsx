@@ -30,7 +30,7 @@ export function FeedPostCard({ post, onLike, onCommentClick }: FeedPostCardProps
       {/* Author row */}
       <div className="flex items-center gap-3 px-4 pt-4 pb-2">
         <Link
-          href={`/feed/user/${post.user_id}`}
+          href={`/profile/${post.user_id}`}
           className="flex items-center gap-3 flex-1 min-w-0"
         >
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-neon-accent to-magic-pink flex items-center justify-center text-white text-xs font-bold shrink-0">

@@ -1,16 +1,19 @@
 "use client";
 
+import { useState } from 'react';
 import { useAuth } from '@/components/auth/auth-provider';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 import useSWR from 'swr';
 import { BottomNav } from '@/components/bottom-nav';
 import { AuroraBackground } from '@/components/aurora-background';
+import { SideMenu } from '@/components/side-menu';
+import { SideMenuProvider } from '@/lib/contexts/side-menu-context';
 import { fetcher } from '@/lib/api/fetcher';
 import type { UserProfile } from '@/types/user';
 
 // Pages where BottomNav should be hidden
-const HIDE_NAV_PATTERNS = ['/scan/confirm', '/inventory/'];
+const HIDE_NAV_PATTERNS = ['/scan/confirm', '/inventory/', '/profile'];
 // Pages that manage their own full-height layout (no pb-28 needed)
 const NO_PADDING_PATTERNS = ['/chat'];
 
@@ -22,6 +25,7 @@ export default function MainLayout({
   const { user, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const [sideMenuOpen, setSideMenuOpen] = useState(false);
   const { data: profileData } = useSWR<{ profile: UserProfile }>(
     user ? '/api/users/me' : null,
     fetcher
@@ -55,10 +59,13 @@ export default function MainLayout({
   return (
     <div className="min-h-screen relative">
       <AuroraBackground />
-      <div className={`relative z-10 ${hideNav || noPadding ? '' : 'pb-28'}`}>
-        <main>{children}</main>
-      </div>
+      <SideMenuProvider value={{ openSideMenu: () => setSideMenuOpen(true) }}>
+        <div className={`relative z-10 ${hideNav || noPadding ? '' : 'pb-28'}`}>
+          <main>{children}</main>
+        </div>
+      </SideMenuProvider>
       {!hideNav && <BottomNav />}
+      <SideMenu open={sideMenuOpen} onOpenChange={setSideMenuOpen} />
     </div>
   );
 }

@@ -8,6 +8,9 @@ export interface RecipeStep {
   item_name: string;
   instruction: string;
   substitution_note?: string;
+  color_code?: string;
+  color_name?: string;
+  brand?: string;
 }
 
 /** レシピ — Firestore: users/{userId}/recipes/{recipeId} */
@@ -27,6 +30,7 @@ export interface Recipe {
   preview_image_url?: string;
   character_theme?: "cute" | "cool" | "elegant";
   is_favorite: boolean;
+  source?: "manual" | "ai";
   feedback?: {
     user_rating: "liked" | "neutral" | "disliked";
     created_at: string;

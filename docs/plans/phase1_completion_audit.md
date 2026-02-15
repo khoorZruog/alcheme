@@ -1,16 +1,16 @@
 # Phase 1 (MVP) 完了状況監査レポート
 
-**Date:** 2026-02-15
+**Date:** 2026-02-16 (Updated)
 **Auditor:** Claude Code (Opus 4.6)
-**Status:** ✅ Phase 1 全項目完了
+**Status:** ✅ Phase 1 全項目完了 → Phase 2 Batch 0.5〜8.5 完了
 
 ---
 
 ## 1. Phase 1 スコープ定義 (PRD §9.1)
 
 > Inventory Manager + Product Search + Alchemist + Concierge + **Simulator**。
-> 基本的なエンゲージメント機能（コスメカード・スキャン体験）。仕上がりプレビュー（Gemini 2.5 Flash Image）。
-> ワンタップ評価。Next.js PWA Webアプリ。Firebase Auth。Agent Engine デプロイ。楽天API連携。
+> 基本的なエンゲージメント機能（コスメカード・スキャン体験）。仕上がりプレビュー（Gemini 2.0 Flash Image）。
+> ワンタップ評価。Next.js PWA Webアプリ。Firebase Auth。**Cloud Run デプロイ**（当初計画の Agent Engine ではなく Cloud Run + FastAPI + ADK Runner を採用）。楽天API連携。
 
 ---
 
@@ -57,7 +57,7 @@
 | Inventory Manager | P0 | ✅ | 画像解析、Firestore保存 |
 | Product Search | P0 | ✅ | google_search ツール |
 | Cosmetic Alchemist | P0 | ✅ | レシピ生成、代用テクニック、買い足し楽天リンク |
-| **Simulator** | **P0** | **🔜 Phase 2** | 仕上がりプレビュー画像生成（Gemini 2.5 Flash Image）。技術的に大きな機能のためPhase 2で実装。 |
+| **Simulator** | **P0** | **✅ Phase 2 B1** | 仕上がりプレビュー画像生成（Gemini 2.0 Flash Image）。Phase 2 Batch 1 で実装完了。SSE `preview_image` イベントでリアルタイム配信。 |
 
 ### ADK ツール一覧
 
@@ -79,24 +79,24 @@
 
 ## 5. ADK Sessions & Memory 活用状況
 
-### 現状
+### 現状 (Phase 2 Batch 2 完了後)
 
 | 項目 | 状態 | 詳細 |
 |------|------|------|
-| SessionService | `InMemorySessionService` | Phase 2で永続化予定 |
-| Session ID | フロントエンドで毎回生成 | `chat-{timestamp}-{random}` — ページ単位のセッション管理 |
+| SessionService | ✅ `DatabaseSessionService` | SQLAlchemy async backend (sqlite+aiosqlite)。サーバー再起動後も会話履歴維持 |
+| Session ID | ✅ サーバー主導 | `chat-{userId}` 固定ID。フロントからのセッションID送信を廃止 |
 | Session State `user:id` | ✅ 設定済み | ツールがFirestoreアクセスに使用 |
 | Session State `user:personal_color` | ✅ 設定済み | `_build_user_state()` でFirestoreから注入 |
 | Session State `user:skin_type` | ✅ 設定済み | 同上 |
 | Session State `user:display_name` | ✅ 設定済み | 同上 |
 | Session State `user:beauty_goals` | ✅ 設定済み | 同上 |
 | Session State `session:current_inventory_summary` | ✅ | `get_inventory_summary` が設定 |
-| Memory Service | 🔜 Phase 2 | クロスセッション記憶は Phase 2 で導入 |
+| Memory Service | ✅ `InMemoryMemoryService` | クロスセッション記憶。セッション上限20イベント超過時にメモリ抽出 |
 
-### Phase 2 改善ポイント
+### Phase 3 改善ポイント
 
-1. **永続セッション**: `InMemorySessionService` → `DatabaseSessionService` (Firestore) への移行
-2. **Memory Service**: 過去の好み・レシピ履歴を記憶する `InMemoryMemoryService` の導入
+1. **RAG Memory**: `InMemoryMemoryService` → `VertexAiRagMemoryService` への移行（再起動耐性）
+2. **セッションDB**: SQLite → Cloud SQL or Firestore への移行（マルチインスタンス対応）
 
 ---
 
@@ -128,18 +128,18 @@
 | I1 | 買い足し提案の楽天リンク | `alchemist.py` に「プラスワン・マジック」セクション追加。楽天検索URL自動生成 |
 | I2 | チャット内レシピカード「詳しく見る」リンク | 既に実装済み + レシピID注入で完全動作 |
 
-### 🔜 Phase 2 先送り
+### Phase 2 先送り項目の完了状況
 
-| # | 項目 | 理由 |
-|---|------|------|
-| I3 | 仕上がりプレビュー (Simulator) | Gemini 2.5 Flash Image 統合が必要。技術的に大きな機能のためPhase 2 Batch 1 で実装 |
-| N1 | Freshness Guardian エージェント | Phase 2 スコープ |
-| N2 | Portfolio Analyst エージェント | Phase 2 スコープ |
-| N3 | Memory Service (クロスセッション) | Phase 2 スコープ |
-| N4 | 永続 SessionService (Firestore) | Phase 2 スコープ |
-| N5 | E2E テスト (Playwright) | Phase 2 スコープ |
-| N6 | PWA Service Worker | Phase 2 スコープ |
-| N7 | Cloud Run デプロイ | Phase 2 スコープ |
+| # | 項目 | 状態 | 備考 |
+|---|------|------|------|
+| I3 | 仕上がりプレビュー (Simulator) | ✅ Batch 1 | Gemini 2.0 Flash Image で実装完了 |
+| N1 | Freshness Guardian エージェント | 🔜 Phase 3 | 未実装 |
+| N2 | Portfolio Analyst エージェント | 🔜 Phase 3 | 未実装 |
+| N3 | Memory Service (クロスセッション) | ✅ Batch 2 | InMemoryMemoryService 導入済み |
+| N4 | 永続 SessionService | ✅ Batch 2 | DatabaseSessionService (SQLAlchemy) |
+| N5 | E2E テスト (Playwright) | ✅ Batch 3 | 12テスト全パス |
+| N6 | PWA Service Worker | ✅ Batch 3 | cache-first (static) / network-first (API) |
+| N7 | Cloud Run デプロイ | ✅ Batch 3 | Dockerfile + cloudbuild.yaml 構築済み |
 
 ---
 
@@ -166,43 +166,47 @@ firestore_root/
 
 | テスト層 | 仕様要件 | 実装済み | 状態 |
 |---------|---------|---------|------|
-| Unit (Python) | UT-P01〜P14 | 0 | 🔜 Phase 2 |
-| Unit (Frontend) | UT-F01〜F14 | 42テスト (9ファイル) | ⚠️ 部分的（主要コンポーネントのみ） |
-| Integration | INT-01〜INT-08 | 0 | 🔜 Phase 2 |
-| API (BFF) | API-01〜API-19 | 0 | 🔜 Phase 2 |
-| Agent Eval | AGT-01〜AGT-17 | 0 | 🔜 Phase 2 |
-| E2E | E2E-01〜E2E-06 | 0 | 🔜 Phase 2 |
+| Unit (Python) | UT-P01〜P14 | 100テスト (Batch 0.5/1/2含む) | ✅ 完了 |
+| Unit (Frontend) | UT-F01〜F14 | 127テスト (API + Hook + Component) | ✅ 完了 |
+| Integration | INT-01〜INT-08 | API テストで部分カバー | ⚠️ 部分的 |
+| API (BFF) | API-01〜API-19 | 19テスト (auth/inventory/chat/recipes) | ✅ 完了 |
+| Agent Eval | AGT-01〜AGT-17 | Hallucination テスト実装済み | ⚠️ 部分的 |
+| E2E | E2E-01〜E2E-06 | 12テスト (Playwright) | ✅ 完了 |
 | Security | SEC-01〜SEC-04 | 3テスト (2ファイル) | ⚠️ 部分的 |
+| CI/CD | GitHub Actions | frontend + agent 並列ジョブ | ✅ 完了 |
 
 ---
 
-## 10. Phase 2 & 3 への引き継ぎ事項
+## 10. Phase 2 完了状況 & Phase 3 への引き継ぎ
 
-### Phase 2 (Beta) スコープ (PRD §9.1)
-- P1エージェント追加: Trend Hunter, TPO Tactician, Makeup Instructor, Memory Keeper, Profiler
-- Simulator (仕上がりプレビュー) ← Phase 1から繰り越し
-- カレンダー・天気連携
-- 使い切りチャレンジ
-- Beauty Log
-- SNS基本機能（レシピ共有・アレンジ投稿・フォロー・コメント）
-- AIフィードバックループ本格稼働
-- 楽天/EC連携強化 + 候補選択UI
+### Phase 2 (Beta) — ✅ 完了 (Batch 0.5〜8.5)
 
-### Phase 3 (Launch) スコープ (PRD §9.1)
-- P2機能追加
-- SNS本格展開（タグコミュニティ・商品ページ・レシピツリー）
-- B2Bデータ提供基盤
-- 天気連動アドバイス
-- Content Curator, Health Monitor, Event Strategist
+| バッチ | 内容 | 状態 |
+|--------|------|------|
+| B0.5 | ショッピング相談（相性チェック・比較） | ✅ |
+| B1 | Simulator（仕上がりプレビュー） | ✅ |
+| B2 | Memory Service + 永続セッション | ✅ |
+| B3 | テスト基盤 + Cloud Run デプロイ + PWA | ✅ |
+| B4 | 安定化 + UXポリッシュ | ✅ |
+| B5 | Beauty Log + Memory Keeper | ✅ |
+| B6 | SNS基本機能（フィード・フォロー・いいね・コメント） | ✅ |
+| B7 | Trend Hunter + TPO Tactician | ✅ |
+| B8 | Profiler + Makeup Instructor | ✅ |
+| B8.5 | UX改善（登録4パターン・フィルタ/ソート・テーマ提案タップ） | ✅ |
 
-### Phase 2+3 同時進行のための推奨バッチ
+**エージェント数: 10体**（Concierge, Inventory, Product Search, Alchemist, Simulator, Memory Keeper, Trend Hunter, TPO Tactician, Profiler, Makeup Instructor）
 
-| バッチ | 内容 | Phase | 優先度 |
-|--------|------|-------|--------|
-| B1 | Simulator (仕上がりプレビュー) + Memory Service | 2 | 高 |
-| B2 | 楽天/EC連携強化 + 候補選択UI | 2 | 高 |
-| B3 | Trend Hunter + TPO Tactician (天気・カレンダー) | 2+3 | 中 |
-| B4 | Beauty Log + Memory Keeper + Profiler | 2 | 中 |
-| B5 | SNS基本 (レシピ共有・フォロー) | 2 | 中 |
-| B6 | 使い切りチャレンジ + Makeup Instructor | 2 | 低 |
-| B7 | SNS展開 + B2Bデータ基盤 | 3 | 低 |
+### Phase 3 (Launch) 残タスク
+
+| バッチ | 内容 | 優先度 |
+|--------|------|--------|
+| B9 | Content Curator, Health Monitor, Event Strategist, Product Scout | P-Low |
+| B10 | B2B基盤 (BigQuery), 商品ページ, レシピツリー, つくれぽ | P-Low |
+
+### 未実装項目
+- 使い切りチャレンジ (プログレスバー + バッジ UI)
+- Freshness Guardian / Portfolio Analyst エージェント
+- BigQuery ML K-means (Profiler 嗜好クラスタリング)
+- VertexAiRagMemoryService (Beauty Log RAG ベース記憶)
+- カスタムドメイン設定
+- Cloud SQL への SessionDB 移行（マルチインスタンス対応）

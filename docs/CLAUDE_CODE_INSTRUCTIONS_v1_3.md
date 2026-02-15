@@ -5,10 +5,10 @@
 
 | | |
 |---|---|
-| **Version** | 1.4 |
-| **Date** | 2026-02-15 |
+| **Version** | 1.5 |
+| **Date** | 2026-02-16 |
 | **Product** | alche:me（アルケミー） |
-| **Phase** | Phase 1 Complete → Phase 2+3 開発中 |
+| **Phase** | Phase 2 Complete (Batch 0.5〜8.5) → Phase 3 開発待ち |
 | **Author** | Eri Kaneko (Product Owner) |
 
 ### Changelog
@@ -20,6 +20,7 @@
 | 1.2 | 2026-02-14 | PRD v4 整合: §2 トーンからRPGメタファー指示を削除（PRD §5.3準拠）。§8.1 ユーザープロフィールをLIPS水準に拡張。§8.1 インベントリスキーマをAppendix C準拠に拡張。§3.2 F9 の名称をコスメ用語に変更。 |
 | 1.3 | 2026-02-14 | PRD v4 アライメントレビュー反映（全18項目）: §0 RPG表現をモチーフ表現に修正(B-5)。§7 sample_inventory.json 注記追加(A-2)。§8.1 stats スキーマをコスメ用語4軸(pigment/longevity/shelf_life/natural_finish)に統一(A-1)。§8.1 status フィールドに Phase 2 拡張注記追加(A-4)。§8.1 stats 内部1-5/UI変換ルール明記(A-5)。§5.2 auth-provider コンテキスト拡張一覧を更新。§5.2 onboarding パスを(auth)レイアウトに移動(C-4)。§5.4 ディレクトリ構造で onboarding を(auth)配下に移動(C-4)。§5.4 docs/ 内の prompts-catalog 参照を v2 に修正(D-2/D-3)。 |
 | 1.4 | 2026-02-15 | **Phase 1 完了**: リアルタイム進捗表示、おまかせテーマ提案、get_today_context ツール、BottomNav レシピタブ、ADK State プロフィール注入、買い足し楽天リンク、レシピ保存フロー修正（フィールド名正規化）。Phase 1 完了監査実施。Phase 2+3 実装計画策定。 |
+| 1.5 | 2026-02-16 | **Phase 2 完了 (Batch 0.5〜8.5)**: Agent Engine→Cloud Run+FastAPI+ADK Runner に全面移行。ドキュメント整合性更新（設計書・実装計画・監査レポート）。アーキテクチャ: 2サービス構成 (alcheme-web + alcheme-agent)、Cloud Build CI/CD、10エージェント体制。 |
 
 ---
 
@@ -29,9 +30,11 @@
 
 **Phase 0（完了）:** Zenn ハッカソンで Streamlit + ADK のプロトタイプを構築。コア機能（画像→在庫登録→レシピ生成）の動作を確認済み。
 
-**Phase 1（これから作るもの）:** Next.js Web アプリ + Firebase + ADK エージェントによる MVP。クローズドβ 50人が目標。
+**Phase 1（完了）:** Next.js Web アプリ + Firebase + ADK エージェントによる MVP。4エージェント（Concierge, Inventory, Product Search, Alchemist）。
 
-**現在地:** Next.js + Firebase + shadcn/ui の**ボイラープレート**が存在する。これを alche:me 仕様にリファクタしながら MVP を構築する。
+**Phase 2（完了 — Batch 0.5〜8.5）:** 10エージェント体制。Simulator、Memory、SNS、Beauty Log、Trend/TPO、Profiler/Instructor。UX改善（登録4パターン、フィルタ/ソート、テーマ提案タップ）。Cloud Run 2サービス構成でデプロイ。
+
+**現在地:** Phase 2 全バッチ完了。テスト全パス（E2E 12、Unit 127）。Cloud Run デプロイ設定済み（初回デプロイ待ち）。Phase 3 (Batch 9-10) は Content Curator 等の追加エージェントと B2B 基盤。
 
 ---
 
@@ -86,7 +89,7 @@ Phase 0 コード内の旧名称を以下のように置換すること。
 | **ゴール** | クローズドβ 50人が使える Web アプリ |
 | **エージェント数** | 4体（Inventory Manager + Product Search + Alchemist + Concierge） |
 | **フロントエンド** | Next.js 16 + React 19 + TypeScript + Tailwind CSS + shadcn/ui |
-| **バックエンド** | Cloud Run (FastAPI) or Vertex AI Agent Engine |
+| **バックエンド** | Cloud Run (FastAPI + ADK Runner) |
 | **認証** | Firebase Auth (Email/Password + Google OAuth) |
 | **DB** | Cloud Firestore |
 | **ストレージ** | Cloud Storage |
@@ -136,48 +139,54 @@ Backend:
   FastAPI（BFF から Agent Engine への橋渡し、または直接ホスト）
 
 AI/Agent:
-  Gemini 2.5 Flash（メイン推論・画像認識）
+  Gemini 2.5 Flash（メイン推論・画像認識 — Vertex AI 経由）
   Gemini 2.5 Pro（複雑な推論タスク用、コスト注意）
-  Gemini 2.5 Flash Image（仕上がりプレビュー生成, $0.039/image）
+  Gemini 2.0 Flash（仕上がりプレビュー画像生成 — us-central1）
 
 Infrastructure:
   Firebase Auth
   Cloud Firestore
   Cloud Storage
-  Cloud Run or Vertex AI Agent Engine
-  GitHub Actions (CI/CD)
+  Cloud Run（2サービス: web + agent）
+  Cloud Build (CI/CD) + GitHub Actions (lint/test)
 ```
 
 ### 4.2 アーキテクチャパターン
 
-**BFF（Backend for Frontend）パターン**を採用。
+**BFF（Backend for Frontend）パターン**を採用。2つの Cloud Run サービスで構成。
 
 ```
 [Next.js Frontend + PWA]
         │
         │ HTTPS (REST + SSE)
         ▼
-[Next.js API Routes (BFF)]
+[Cloud Run: alcheme-web]
+  Next.js API Routes (BFF)
   - Firebase Auth Token 検証
   - レート制限
   - リクエスト整形
-  - レスポンスストリーミング
+  - SSEストリーミング中継
         │
-        │ gRPC / REST
+        │ REST (X-API-Key 認証)
         ▼
-[ADK Agent Engine / Cloud Run]
-  root_agent (Concierge)
-  ├── inventory_agent (Inventory Manager + Product Search)
-  └── alchemist_agent (Cosmetic Alchemist)
+[Cloud Run: alcheme-agent]
+  FastAPI + ADK Runner
+  root_agent (Concierge) — 10 sub-agents
+  ├── inventory_agent, product_search_agent
+  ├── alchemist_agent, simulator (後処理)
+  ├── memory_keeper, trend_hunter, tpo_tactician
+  └── profiler, makeup_instructor
         │
         ▼
-[Cloud Firestore] [Cloud Storage] [External APIs]
+[Cloud Firestore] [Cloud Storage] [Gemini via Vertex AI] [External APIs]
 ```
+
+**CI/CD:** `cloudbuild.yaml` で main ブランチ push 時に両サービスを自動デプロイ。GitHub Actions で lint/type-check/test を実行。
 
 ### 4.3 設計原則（Design Doc ADR より）
 
 1. **ADR-001:** Next.js API Routes を BFF として採用。フロントエンドから Agent Engine への直接通信は行わない。
-2. **ADR-002:** Agent Engine を第一選択、Cloud Run をフォールバック。
+2. **ADR-002:** Cloud Run + FastAPI + ADK Runner を採用（当初 Agent Engine を検討したが、SSE/カスタムセッション管理の要件から Cloud Run を選択）。
 3. **ADR-003:** 自社コスメ DB は構築しない。AI 画像認識 + Google Search + 楽天 API + Gemini 世界知識 + ユーザー登録データで補完。
 4. **ADR-004:** 仕上がりプレビューは AI キャラクターイメージ方式。ユーザー顔写真は使わない（肖像権リスク回避）。
 
@@ -937,11 +946,11 @@ Phase 1 MVP が「完成」と言える条件:
 - [x] 「今日のメイクを提案して」とチャットすると、手持ち在庫のみでレシピが返る
 - [x] レシピに在庫にないアイテムが含まれない（Hallucination ゼロ）
 - [x] レシピにワンタップ評価ができる
-- [ ] Cloud Run 上で動作し、スマホからアクセスできる ← Phase 2 Batch 3 で対応
+- [ ] Cloud Run 上で動作し、スマホからアクセスできる ← cloudbuild.yaml + Dockerfile 構築済み、初回デプロイ待ち
 - [x] P95 レスポンスタイム < 15秒
 
 ---
 
 *— End of Document —*
-*Version 1.4 | Last Updated: 2026-02-15*
+*Version 1.5 | Last Updated: 2026-02-16*
 *Author: Eri Kaneko (Product Owner)*

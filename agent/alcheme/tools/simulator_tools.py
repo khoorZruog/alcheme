@@ -55,15 +55,25 @@ async def generate_preview_image(
         Dict with 'status', 'image_url', and optionally 'error'.
     """
     bucket_name = os.environ.get("GCS_PREVIEW_BUCKET", "alcheme-previews")
-    model_name = os.environ.get("SIMULATOR_MODEL", "gemini-2.0-flash-exp")
+    model_name = os.environ.get("SIMULATOR_MODEL", "gemini-2.5-flash-image")
+    # Image generation models may only be available in us-central1 on Vertex AI
+    image_location = os.environ.get("SIMULATOR_LOCATION", "us-central1")
 
     try:
         # Build the image generation prompt
         prompt = build_image_prompt(steps, theme)
-        logger.info("Generating preview image for recipe %s (theme=%s)", recipe_id, theme)
+        logger.info(
+            "Generating preview image for recipe %s (theme=%s, model=%s, location=%s)",
+            recipe_id, theme, model_name, image_location,
+        )
 
-        # Call Gemini with image generation
-        client = genai.Client()
+        # Call Gemini with image generation — use dedicated location for Vertex AI
+        use_vertexai = os.environ.get("GOOGLE_GENAI_USE_VERTEXAI", "").upper() == "TRUE"
+        if use_vertexai:
+            project = os.environ.get("GOOGLE_CLOUD_PROJECT", "")
+            client = genai.Client(vertexai=True, project=project, location=image_location)
+        else:
+            client = genai.Client()
         response = await client.aio.models.generate_content(
             model=model_name,
             contents=prompt,
@@ -88,7 +98,7 @@ async def generate_preview_image(
         bucket = _get_storage().bucket(bucket_name)
         blob = bucket.blob(blob_path)
         blob.upload_from_string(image_data, content_type="image/webp")
-        blob.make_public()
+        # Public access is granted via bucket-level IAM (uniform access)
         image_url = blob.public_url
 
         # Update Firestore recipe document with preview image URL

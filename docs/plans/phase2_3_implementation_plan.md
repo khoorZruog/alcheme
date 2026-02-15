@@ -1,7 +1,7 @@
 # Phase 2+3 統合実装計画
 
 **Date:** 2026-02-15
-**Status:** Batch 0.5 + 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 実装完了 / Zenn記事・README.md 更新済み
+**Status:** Batch 0.5 + 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 8.5 実装完了 / Zenn記事・README.md 更新済み
 **前提:** Phase 1 MVP 完了済み
 
 ---
@@ -358,6 +358,31 @@ social/user_stats/{userId}
 
 ---
 
+## Batch 8.5: UX改善 + コスメ登録拡充 — P-High ✅ 実装済み
+
+### 概要
+ユーザーテスト・E2Eテストガイドのフィードバックを元にしたUX改善バッチ。コスメ登録パターンの拡充、在庫管理の高度化、チャットUXの改善を実施。
+
+### 実装内容
+
+| # | タスク | ファイル | Status |
+|---|--------|---------|--------|
+| 1 | **コスメ登録方法の拡充（4パターン）** — スキャン鑑定/楽天検索/Web検索/手動登録 | `components/add-method-sheet.tsx` (新規), `app/(main)/add/search/page.tsx` (新規), `app/(main)/add/web-search/page.tsx` (新規), `app/(main)/add/manual/page.tsx` (新規) | ✅ |
+| 2 | **楽天API検索 BFF ルート** — キーワードで楽天から直接商品検索 | `app/api/inventory/search/rakuten/route.ts` (新規) | ✅ |
+| 3 | **Web検索 BFF ルート + エージェントエンドポイント** — Google検索経由の商品検索 | `app/api/inventory/search/web/route.ts` (新規), `agent/server.py` | ✅ |
+| 4 | **BottomNav スキャンタブ削除** — 6タブ→5タブに整理。登録は在庫ページの「+」ボタンに統合 | `components/bottom-nav.tsx` | ✅ |
+| 5 | **在庫フィルタ・並び替え** — テクスチャフィルタ、5種類のソート（新しい順/古い順/ブランド名/残量昇順・降順）、アクティブフィルタバッジ | `hooks/use-inventory.ts`, `app/(main)/inventory/page.tsx` | ✅ |
+| 6 | **チャットテーマ提案のタップ対応** — テーマ番号の手入力からタップ可能なカードUIに変更 | `components/chat-message.tsx`, `app/(main)/chat/page.tsx` | ✅ |
+| 7 | **Firebase Storage DNS修正** — `firebaseStorageDnsError` プレースホルダー画像対応 | `components/cosme-card.tsx` 等 | ✅ |
+| 8 | **認証UI統一** — ログイン/サインアップ画面を1画面に統合 | `app/(auth)/login/page.tsx`, `app/(auth)/signup/page.tsx` | ✅ |
+
+### 設計方針
+- コスメ登録の入口を `AddMethodSheet` (ボトムシート) に集約し、在庫ページの `+` ボタンから呼び出し
+- フィルタ・ソートはクライアントサイド実装 (`use-inventory` hook 内の `useMemo`)
+- テーマ提案の検出は正規表現 (`1️⃣ 2️⃣ 3️⃣` パターン) によるパース
+
+---
+
 ## Batch 9: Phase 3 エージェント群 — P-Low
 
 ### 概要
@@ -485,10 +510,11 @@ analytics/                        ← NEW: B2Bデータ (BigQuery連携)
 
 ## 次のアクション
 
-1. ~~Batch 0.5〜8: 全て実装完了~~ ✅
+1. ~~Batch 0.5〜8.5: 全て実装完了~~ ✅
 2. ~~Zenn記事 (`docs/zenn_article.md`) を実装状況に合わせて更新~~ ✅
 3. ~~README.md をリポジトリルートに作成~~ ✅
-4. **E2Eテスト実施** — Playwright による主要フロー検証
-5. **GitHub リポジトリ公開** — E2E通過後にアップロード
-6. **Batch 9 (Phase 3 エージェント群)** — Content Curator, Health Monitor, Event Strategist, Product Scout
-7. **Batch 10 (B2B基盤 + SNS拡張)** — BigQuery, 商品ページ, つくれぽ
+4. ~~E2Eテスト実施~~ ✅ — Playwright E2E 12テスト + Unit 127テスト 全パス
+5. ~~GitHub リポジトリ公開~~ ✅
+6. **Cloud Run 本番デプロイ** — cloudbuild.yaml でCI/CDパイプライン構築済み、初回デプロイ待ち
+7. **Batch 9 (Phase 3 エージェント群)** — Content Curator, Health Monitor, Event Strategist, Product Scout
+8. **Batch 10 (B2B基盤 + SNS拡張)** — BigQuery, 商品ページ, つくれぽ

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Package, AlertCircle } from "lucide-react";
+import { Package, AlertCircle, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CategoryBadge } from "@/components/category-badge";
 import type { CosmeCategory } from "@/types/inventory";
@@ -16,7 +16,12 @@ interface CosmeCardProps {
   price?: number;
   category: CosmeCategory;
   remainingPercent: number;
+  colorCode?: string;
+  colorName?: string;
   className?: string;
+  selectionMode?: boolean;
+  selected?: boolean;
+  onSelect?: () => void;
 }
 
 export function CosmeCard({
@@ -28,17 +33,41 @@ export function CosmeCard({
   price,
   category,
   remainingPercent,
+  colorCode,
+  colorName,
   className,
+  selectionMode,
+  selected,
+  onSelect,
 }: CosmeCardProps) {
   const displayImage = imageUrl || rakutenImageUrl;
+
+  const Wrapper = selectionMode ? "button" as const : Link;
+  const wrapperProps = selectionMode
+    ? { onClick: onSelect, type: "button" as const }
+    : { href: `/inventory/${itemId}` };
+
   return (
-    <Link
-      href={`/inventory/${itemId}`}
+    <Wrapper
+      {...wrapperProps as any}
       className={cn(
-        "block glass-card bg-white rounded-card p-3 relative overflow-hidden btn-squishy cursor-pointer",
+        "block glass-card bg-white rounded-card p-3 relative overflow-hidden btn-squishy cursor-pointer text-left",
+        selected && "ring-2 ring-neon-accent",
         className
       )}
     >
+      {/* Selection checkbox */}
+      {selectionMode && (
+        <div className="absolute top-3 right-3 z-10">
+          <div className={cn(
+            "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all",
+            selected ? "bg-neon-accent border-neon-accent" : "bg-white/80 border-gray-300"
+          )}>
+            {selected && <Check className="h-3.5 w-3.5 text-white" />}
+          </div>
+        </div>
+      )}
+
       {/* Category Tag */}
       <div className="absolute top-3 left-3 z-10">
         <CategoryBadge category={category} />
@@ -79,6 +108,13 @@ export function CosmeCard({
         <h3 className="text-sm font-bold text-text-ink leading-tight mb-1 line-clamp-2">
           {productName}
         </h3>
+        {(colorCode || colorName) && (
+          <p className="text-[10px] text-text-muted truncate mb-1">
+            {colorCode && <span className="font-bold text-neon-accent">#{colorCode}</span>}
+            {colorCode && colorName && " "}
+            {colorName}
+          </p>
+        )}
         {price != null && (
           <p className="text-[10px] text-alcheme-muted mb-1">¥{price.toLocaleString("ja-JP")}</p>
         )}
@@ -94,6 +130,6 @@ export function CosmeCard({
           />
         </div>
       </div>
-    </Link>
+    </Wrapper>
   );
 }

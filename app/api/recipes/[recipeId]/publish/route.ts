@@ -61,6 +61,7 @@ export async function POST(
       recipe_id: recipeId,
       recipe_name: recipe.recipe_name || recipe.title || 'メイクレシピ',
       preview_image_url: recipe.preview_image_url || null,
+      steps,
       steps_summary: stepsSummary,
       character_theme: recipe.character_theme || null,
       visibility: 'public',
@@ -78,16 +79,18 @@ export async function POST(
       .doc();
 
     await adminDb.runTransaction(async (tx) => {
-      tx.set(postRef, postData);
-      tx.update(recipeRef, { published_post_id: postRef.id });
-
-      // Update user stats
+      // All reads must come before writes in Firestore transactions
       const statsRef = adminDb
         .collection('social')
         .doc('user_stats')
         .collection('items')
         .doc(userId);
       const statsDoc = await tx.get(statsRef);
+
+      // Now perform all writes
+      tx.set(postRef, postData);
+      tx.update(recipeRef, { published_post_id: postRef.id });
+
       if (statsDoc.exists) {
         tx.update(statsRef, { post_count: (statsDoc.data()?.post_count || 0) + 1 });
       } else {
@@ -143,16 +146,18 @@ export async function DELETE(
       .doc(postId);
 
     await adminDb.runTransaction(async (tx) => {
-      tx.delete(postRef);
-      tx.update(recipeRef, { published_post_id: null });
-
-      // Decrement user stats
+      // All reads must come before writes in Firestore transactions
       const statsRef = adminDb
         .collection('social')
         .doc('user_stats')
         .collection('items')
         .doc(userId);
       const statsDoc = await tx.get(statsRef);
+
+      // Now perform all writes
+      tx.delete(postRef);
+      tx.update(recipeRef, { published_post_id: null });
+
       if (statsDoc.exists) {
         const current = statsDoc.data()?.post_count || 0;
         tx.update(statsRef, { post_count: Math.max(0, current - 1) });

@@ -33,6 +33,15 @@ export interface ChatMessage {
   created_at: string;
 }
 
+/** 会話（チャット履歴） */
+export interface Conversation {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  message_count: number;
+}
+
 /** SSE イベント型 */
 export type SSEEventType = "text_delta" | "recipe_card" | "preview_image" | "progress" | "done" | "error";
 

@@ -110,33 +110,54 @@ export function BeautyLogCalendar({
 
       {/* Calendar grid */}
       <div className="grid grid-cols-7 gap-1">
-        {calendarDays.map((cell, i) => (
-          <button
-            key={i}
-            disabled={cell.day === null}
-            onClick={() => cell.dateStr && onDateClick(cell.dateStr)}
-            className={`relative flex flex-col items-center justify-center h-10 rounded-lg text-xs transition-colors ${
-              cell.day === null
-                ? ""
-                : cell.isToday
-                  ? "bg-alcheme-rose/10 font-bold text-alcheme-rose"
-                  : "hover:bg-gray-50 text-alcheme-charcoal"
-            }`}
-          >
-            {cell.day !== null && (
-              <>
-                <span>{cell.day}</span>
-                {cell.log && (
-                  <div
-                    className={`absolute bottom-1 w-1.5 h-1.5 rounded-full ${
-                      RATING_COLORS[cell.log.self_rating ?? 3]
-                    }`}
-                  />
-                )}
-              </>
-            )}
-          </button>
-        ))}
+        {calendarDays.map((cell, i) => {
+          const hasImage = cell.log?.preview_image_url;
+          return (
+            <button
+              key={i}
+              disabled={cell.day === null}
+              onClick={() => cell.dateStr && onDateClick(cell.dateStr)}
+              className={`relative flex flex-col items-center justify-center rounded-lg text-xs transition-colors overflow-hidden ${
+                hasImage ? "h-14" : "h-10"
+              } ${
+                cell.day === null
+                  ? ""
+                  : cell.isToday
+                    ? "bg-alcheme-rose/10 font-bold text-alcheme-rose"
+                    : "hover:bg-gray-50 text-alcheme-charcoal"
+              }`}
+            >
+              {cell.day !== null && (
+                <>
+                  {hasImage ? (
+                    <>
+                      <img
+                        src={cell.log!.preview_image_url}
+                        alt=""
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/20" />
+                      <span className="relative z-10 text-white font-bold text-[11px] drop-shadow-sm">
+                        {cell.day}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span>{cell.day}</span>
+                      {cell.log && (
+                        <div
+                          className={`absolute bottom-1 w-1.5 h-1.5 rounded-full ${
+                            RATING_COLORS[cell.log.self_rating ?? 3]
+                          }`}
+                        />
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

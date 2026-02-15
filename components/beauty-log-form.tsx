@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronDown, Sparkles } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { ChevronDown, Sparkles, Camera, X, Loader2, ImagePlus } from "lucide-react";
 import { toast } from "sonner";
 import { useRecipes } from "@/hooks/use-recipes";
 import { RecipePickerSheet } from "@/components/recipe-picker-sheet";
@@ -22,6 +22,40 @@ const WEATHERS = [
   { label: "雨", emoji: "🌧️" },
   { label: "雪", emoji: "❄️" },
 ];
+
+const MAX_PHOTOS = 5;
+const MAX_SIZE = 1200;
+
+function resizeImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let { width, height } = img;
+        if (width > MAX_SIZE || height > MAX_SIZE) {
+          if (width > height) {
+            height = (height / width) * MAX_SIZE;
+            width = MAX_SIZE;
+          } else {
+            width = (width / height) * MAX_SIZE;
+            height = MAX_SIZE;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d")!;
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", 0.85));
+      };
+      img.onerror = reject;
+      img.src = reader.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 interface BeautyLogFormProps {
   initialData?: Partial<BeautyLogEntry>;
@@ -45,15 +79,72 @@ export function BeautyLogForm({
   const [date, setDate] = useState(defaultDate);
   const [recipeId, setRecipeId] = useState(initialData?.recipe_id ?? "");
   const [recipeName, setRecipeName] = useState(initialData?.recipe_name ?? "");
+  const [recipePreviewUrl, setRecipePreviewUrl] = useState(initialData?.preview_image_url ?? "");
   const [pickerOpen, setPickerOpen] = useState(false);
   const [selfRating, setSelfRating] = useState<number>(initialData?.self_rating ?? 3);
   const [mood, setMood] = useState(initialData?.mood ?? "");
   const [occasion, setOccasion] = useState(initialData?.occasion ?? "");
   const [weather, setWeather] = useState(initialData?.weather ?? "");
   const [userNote, setUserNote] = useState(initialData?.user_note ?? "");
+  const [photos, setPhotos] = useState<string[]>(initialData?.photos ?? []);
   const [isSaving, setIsSaving] = useState(false);
+  const [weatherLoading, setWeatherLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { recipes } = useRecipes();
+
+  // Check if the selected date is in the future
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const isFutureDate = date > todayStr;
+
+  // Auto-fetch weather on mount (only for new entries without existing weather)
+  useEffect(() => {
+    if (initialData?.weather || weather) return;
+    if (!navigator.geolocation) return;
+
+    setWeatherLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const res = await fetch(
+            `/api/weather?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`
+          );
+          if (!res.ok) throw new Error();
+          const data = await res.json();
+          if (data.weather) {
+            setWeather(data.weather);
+          }
+        } catch {
+          // Silently fail — user can manually select
+        } finally {
+          setWeatherLoading(false);
+        }
+      },
+      () => setWeatherLoading(false),
+      { timeout: 5000 }
+    );
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handlePhotoSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    const remaining = MAX_PHOTOS - photos.length;
+    const selected = Array.from(files).slice(0, remaining);
+
+    try {
+      const resized = await Promise.all(selected.map(resizeImage));
+      setPhotos((prev) => [...prev, ...resized]);
+    } catch {
+      toast.error("画像の読み込みに失敗しました");
+    }
+
+    // Reset input
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }, [photos.length]);
+
+  const removePhoto = (index: number) => {
+    setPhotos((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const handleSubmit = async () => {
     setIsSaving(true);
@@ -61,13 +152,16 @@ export function BeautyLogForm({
       const body: Record<string, unknown> = { date, self_rating: selfRating };
       if (recipeId) {
         body.recipe_id = recipeId;
-        const recipe = recipes.find((r) => r.id === recipeId);
-        if (recipe) body.recipe_name = recipe.recipe_name;
+        body.recipe_name = recipeName;
+        if (recipePreviewUrl) {
+          body.preview_image_url = recipePreviewUrl;
+        }
       }
       if (mood) body.mood = mood;
       if (occasion) body.occasion = occasion;
       if (weather) body.weather = weather;
       if (userNote.trim()) body.user_note = userNote.trim();
+      if (photos.length > 0) body.photos = photos;
 
       const res = await fetch("/api/beauty-log", {
         method: "POST",
@@ -76,7 +170,7 @@ export function BeautyLogForm({
       });
       if (!res.ok) throw new Error("Save failed");
 
-      toast.success("メイクログを記録しました！");
+      toast.success(isFutureDate ? "メイク予定を保存しました！" : "メイク日記を記録しました！");
       onSave();
     } catch {
       toast.error("保存に失敗しました");
@@ -85,42 +179,177 @@ export function BeautyLogForm({
     }
   };
 
+  const dateObj = new Date(date + "T00:00:00");
+  const dateDisplay = dateObj.toLocaleDateString("ja-JP", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "short",
+  });
+
+  const weatherEmoji = WEATHERS.find((w) => w.label === weather)?.emoji;
+  const moodEmoji = MOODS.find((m) => m.label === mood)?.emoji;
+
   return (
-    <div className="space-y-5 p-4">
-      {/* Date */}
-      <div>
-        <label className="block text-xs font-medium text-alcheme-muted mb-1">日付</label>
+    <div className="pb-8">
+      {/* ── Journal Date Header ── */}
+      <div className="px-5 pt-5 pb-4">
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="sr-only"
+            id="log-date-input"
+          />
+          <label
+            htmlFor="log-date-input"
+            className="font-display text-2xl font-bold text-text-ink cursor-pointer hover:text-alcheme-rose transition-colors"
+          >
+            {dateDisplay}
+          </label>
+          {isFutureDate && (
+            <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-600 text-[10px] font-bold">
+              予定
+            </span>
+          )}
+        </div>
+        {/* Inline metadata badges */}
+        <div className="flex items-center gap-2 mt-2 text-xs text-text-muted">
+          {weatherEmoji && <span>{weatherEmoji} {weather}</span>}
+          {moodEmoji && <span>{moodEmoji} {mood}</span>}
+          {occasion && (
+            <span className="px-2 py-0.5 rounded-full bg-alcheme-rose/10 text-alcheme-rose">
+              {occasion}
+            </span>
+          )}
+          {weatherLoading && (
+            <span className="inline-flex items-center gap-1 text-text-muted">
+              <Loader2 className="h-3 w-3 animate-spin" />
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* ── Hero Photo Area ── */}
+      <div className="px-5 pb-4">
+        {/* All display images: recipe preview + user photos */}
+        {(() => {
+          const allImages: { src: string; isRecipe: boolean; index: number }[] = [];
+          if (recipePreviewUrl) {
+            allImages.push({ src: recipePreviewUrl, isRecipe: true, index: -1 });
+          }
+          photos.forEach((src, i) => allImages.push({ src, isRecipe: false, index: i }));
+
+          if (allImages.length > 0) {
+            return (
+              <div className="relative rounded-2xl overflow-hidden">
+                <div className={`grid gap-1 ${allImages.length === 1 ? "" : allImages.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
+                  {allImages.map((img) => (
+                    <div
+                      key={img.isRecipe ? "recipe" : `photo-${img.index}`}
+                      className={`relative ${allImages.length === 1 ? "aspect-[4/3]" : "aspect-square"}`}
+                    >
+                      <img src={img.src} alt="" className="w-full h-full object-cover" />
+                      {img.isRecipe ? (
+                        <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-black/40 backdrop-blur-sm text-[10px] text-white font-bold">
+                          AI生成
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => removePhoto(img.index)}
+                          className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center hover:bg-black/60 transition-colors"
+                        >
+                          <X className="h-3.5 w-3.5 text-white" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {photos.length < MAX_PHOTOS && (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="absolute bottom-3 right-3 px-3 py-1.5 rounded-full bg-white/90 backdrop-blur-sm text-xs font-medium text-text-ink shadow-sm hover:bg-white transition-colors flex items-center gap-1.5"
+                  >
+                    <ImagePlus className="h-3.5 w-3.5" />
+                    追加
+                  </button>
+                )}
+              </div>
+            );
+          }
+
+          return (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full aspect-[16/7] rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-text-muted hover:border-alcheme-rose/40 hover:text-alcheme-rose transition-colors bg-gray-50/50"
+            >
+              <Camera className="h-6 w-6 mb-1.5" />
+              <span className="text-xs">{isFutureDate ? "メイクのイメージを追加" : "今日のメイクを記録"}</span>
+            </button>
+          );
+        })()}
         <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-alcheme-rose/30"
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={handlePhotoSelect}
+          className="hidden"
         />
       </div>
 
-      {/* Recipe selector */}
-      <div>
-        <label className="block text-xs font-medium text-alcheme-muted mb-1">使ったレシピ</label>
+      {/* ── Satisfaction Rating ── */}
+      <div className="px-5 pb-3">
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-medium text-text-muted w-16 flex-shrink-0">満足度</span>
+          <div className="flex gap-0.5">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => setSelfRating(n)}
+                className={`text-xl transition-all ${
+                  n <= selfRating ? "text-alcheme-gold" : "text-gray-200"
+                }`}
+              >
+                ★
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Divider ── */}
+      <div className="mx-5 border-t border-gray-100" />
+
+      {/* ── Recipe ── */}
+      <div className="px-5 py-3">
         <button
           type="button"
           onClick={() => setPickerOpen(true)}
-          className="w-full flex items-center gap-3 rounded-lg border border-gray-200 px-3 py-2.5 text-left hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-alcheme-rose/30"
+          className="w-full flex items-center gap-3 py-1 text-left group"
         >
-          {recipeId && recipes.find((r) => r.id === recipeId)?.preview_image_url ? (
+          {recipeId && recipePreviewUrl ? (
             <img
-              src={recipes.find((r) => r.id === recipeId)!.preview_image_url}
+              src={recipePreviewUrl}
               alt=""
-              className="w-8 h-8 rounded-md object-cover flex-shrink-0"
+              className="w-9 h-9 rounded-lg object-cover shrink-0"
             />
           ) : (
-            <div className="w-8 h-8 rounded-md bg-gray-100 flex items-center justify-center flex-shrink-0">
-              <Sparkles className="h-4 w-4 text-alcheme-muted" />
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-neon-accent/10 to-magic-pink/10 flex items-center justify-center flex-shrink-0">
+              <Sparkles className="h-4 w-4 text-neon-accent" />
             </div>
           )}
-          <span className="flex-1 text-sm text-alcheme-charcoal truncate">
-            {recipeId ? recipeName || "レシピを選択" : "レシピなし / 自由メイク"}
-          </span>
-          <ChevronDown className="h-4 w-4 text-alcheme-muted flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] text-text-muted">レシピ</p>
+            <p className="text-sm text-text-ink truncate group-hover:text-alcheme-rose transition-colors">
+              {recipeId ? recipeName || "レシピを選択" : "自由メイク"}
+            </p>
+          </div>
+          <ChevronDown className="h-4 w-4 text-text-muted flex-shrink-0" />
         </button>
         <RecipePickerSheet
           open={pickerOpen}
@@ -130,112 +359,106 @@ export function BeautyLogForm({
           onSelect={(id, name) => {
             setRecipeId(id);
             setRecipeName(name);
+            // Auto-populate recipe preview image
+            const recipe = recipes.find((r) => r.id === id);
+            setRecipePreviewUrl(recipe?.preview_image_url ?? "");
           }}
         />
       </div>
 
-      {/* Star rating */}
-      <div>
-        <label className="block text-xs font-medium text-alcheme-muted mb-1">
-          今日の満足度
-        </label>
-        <div className="flex gap-1">
-          {[1, 2, 3, 4, 5].map((n) => (
-            <button
-              key={n}
-              type="button"
-              onClick={() => setSelfRating(n)}
-              className={`text-2xl transition-transform ${
-                n <= selfRating ? "text-alcheme-gold scale-110" : "text-gray-200"
-              }`}
-            >
-              ★
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* ── Divider ── */}
+      <div className="mx-5 border-t border-gray-100" />
 
-      {/* Mood chips */}
-      <div>
-        <label className="block text-xs font-medium text-alcheme-muted mb-1">気分</label>
-        <div className="flex flex-wrap gap-2">
+      {/* ── Mood ── */}
+      <div className="px-5 py-3">
+        <p className="text-[10px] font-medium text-text-muted mb-2 uppercase tracking-wider">Mood</p>
+        <div className="flex gap-2">
           {MOODS.map((m) => (
             <button
               key={m.label}
               type="button"
               onClick={() => setMood(mood === m.label ? "" : m.label)}
-              className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
+              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all ${
                 mood === m.label
-                  ? "bg-alcheme-rose text-white"
-                  : "bg-gray-100 text-alcheme-charcoal hover:bg-gray-200"
+                  ? "bg-alcheme-rose/10 ring-1 ring-alcheme-rose/30"
+                  : "hover:bg-gray-50"
               }`}
             >
-              {m.emoji} {m.label}
+              <span className="text-xl">{m.emoji}</span>
+              <span className={`text-[10px] ${mood === m.label ? "text-alcheme-rose font-medium" : "text-text-muted"}`}>
+                {m.label}
+              </span>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Occasion chips */}
-      <div>
-        <label className="block text-xs font-medium text-alcheme-muted mb-1">シーン</label>
-        <div className="flex flex-wrap gap-2">
-          {OCCASIONS.map((o) => (
-            <button
-              key={o}
-              type="button"
-              onClick={() => setOccasion(occasion === o ? "" : o)}
-              className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
-                occasion === o
-                  ? "bg-alcheme-rose text-white"
-                  : "bg-gray-100 text-alcheme-charcoal hover:bg-gray-200"
-              }`}
-            >
-              {o}
-            </button>
-          ))}
+      {/* ── Scene & Weather (compact row) ── */}
+      <div className="px-5 py-3 flex gap-6">
+        {/* Occasion */}
+        <div className="flex-1">
+          <p className="text-[10px] font-medium text-text-muted mb-2 uppercase tracking-wider">Scene</p>
+          <div className="flex flex-wrap gap-1.5">
+            {OCCASIONS.map((o) => (
+              <button
+                key={o}
+                type="button"
+                onClick={() => setOccasion(occasion === o ? "" : o)}
+                className={`px-2.5 py-1 rounded-full text-xs transition-colors ${
+                  occasion === o
+                    ? "bg-alcheme-rose text-white"
+                    : "bg-gray-100 text-text-muted hover:bg-gray-200"
+                }`}
+              >
+                {o}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Weather */}
+        <div className="flex-shrink-0">
+          <p className="text-[10px] font-medium text-text-muted mb-2 uppercase tracking-wider">Weather</p>
+          <div className="flex gap-1">
+            {WEATHERS.map((w) => (
+              <button
+                key={w.label}
+                type="button"
+                onClick={() => setWeather(weather === w.label ? "" : w.label)}
+                className={`w-9 h-9 rounded-xl flex items-center justify-center text-base transition-all ${
+                  weather === w.label
+                    ? "bg-alcheme-rose/10 ring-1 ring-alcheme-rose/30"
+                    : "hover:bg-gray-50"
+                }`}
+                title={w.label}
+              >
+                {w.emoji}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Weather chips */}
-      <div>
-        <label className="block text-xs font-medium text-alcheme-muted mb-1">天気</label>
-        <div className="flex flex-wrap gap-2">
-          {WEATHERS.map((w) => (
-            <button
-              key={w.label}
-              type="button"
-              onClick={() => setWeather(weather === w.label ? "" : w.label)}
-              className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
-                weather === w.label
-                  ? "bg-alcheme-rose text-white"
-                  : "bg-gray-100 text-alcheme-charcoal hover:bg-gray-200"
-              }`}
-            >
-              {w.emoji} {w.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* ── Divider ── */}
+      <div className="mx-5 border-t border-gray-100" />
 
-      {/* User note */}
-      <div>
-        <label className="block text-xs font-medium text-alcheme-muted mb-1">メモ</label>
+      {/* ── Journal Note ── */}
+      <div className="px-5 py-4">
         <textarea
           value={userNote}
           onChange={(e) => setUserNote(e.target.value)}
-          placeholder="今日のメイクについてメモ..."
-          rows={3}
-          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-alcheme-rose/30"
+          placeholder={isFutureDate ? "この日のメイクプランを書く..." : "今日のメイクについて書く..."}
+          rows={5}
+          className="w-full text-sm text-text-ink leading-relaxed resize-none focus:outline-none placeholder:text-gray-300 bg-transparent"
         />
       </div>
 
-      {/* Actions */}
-      <div className="flex gap-3">
+      {/* ── Actions ── */}
+      <div className="px-5 pt-2 pb-4 flex gap-3">
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 rounded-button border border-gray-200 px-4 py-2.5 text-sm font-medium text-alcheme-charcoal hover:bg-gray-50 transition-colors"
+          className="px-5 py-2.5 rounded-full text-sm text-text-muted hover:bg-gray-100 transition-colors"
         >
           キャンセル
         </button>
@@ -243,9 +466,9 @@ export function BeautyLogForm({
           type="button"
           onClick={handleSubmit}
           disabled={isSaving}
-          className="flex-1 rounded-button bg-alcheme-rose px-4 py-2.5 text-sm font-medium text-white hover:bg-alcheme-rose/90 transition-colors disabled:opacity-50"
+          className="flex-1 py-2.5 rounded-full bg-text-ink text-sm font-medium text-white hover:bg-text-ink/90 transition-colors disabled:opacity-50"
         >
-          {isSaving ? "保存中..." : "記録する"}
+          {isSaving ? "保存中..." : isFutureDate ? "予定を保存" : "記録する"}
         </button>
       </div>
     </div>

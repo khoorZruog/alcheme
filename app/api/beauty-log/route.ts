@@ -19,17 +19,35 @@ export async function GET(request: NextRequest) {
 
   try {
     const month = request.nextUrl.searchParams.get('month'); // "2026-02"
+    const recipeId = request.nextUrl.searchParams.get('recipe_id');
+    const mode = request.nextUrl.searchParams.get('mode'); // "timeline"
+    const limit = parseInt(request.nextUrl.searchParams.get('limit') || '0', 10);
+    const offset = parseInt(request.nextUrl.searchParams.get('offset') || '0', 10);
     let ref: FirebaseFirestore.Query = logsRef(userId);
 
-    if (month) {
+    // recipe_id filter: no composite index, fetch without orderBy and sort in-memory
+    const useClientSort = !!recipeId;
+
+    if (recipeId) {
+      // Filter by recipe_id (for usage history)
+      ref = ref.where('recipe_id', '==', recipeId);
+    } else if (mode !== 'timeline' && month) {
       // Filter by month using date string range (doc ID = "YYYY-MM-DD")
       ref = ref
         .where('date', '>=', `${month}-01`)
         .where('date', '<=', `${month}-31`);
     }
+    // timeline mode: no month filter, just all logs ordered by date desc
 
-    const snapshot = await ref.orderBy('date', 'desc').get();
-    const logs = snapshot.docs.map((doc) => {
+    let query: FirebaseFirestore.Query = ref;
+    if (!useClientSort) {
+      query = query.orderBy('date', 'desc');
+      if (offset > 0) query = query.offset(offset);
+      if (limit > 0) query = query.limit(limit);
+    }
+
+    const snapshot = await query.get();
+    let logs = snapshot.docs.map((doc) => {
       const data = doc.data();
       return {
         id: doc.id,
@@ -43,12 +61,19 @@ export async function GET(request: NextRequest) {
         occasion: data.occasion ?? undefined,
         weather: data.weather ?? undefined,
         user_note: data.user_note ?? undefined,
+        photos: data.photos ?? [],
         auto_tags: data.auto_tags ?? [],
         selfie_url: data.selfie_url ?? undefined,
+        preview_image_url: data.preview_image_url ?? undefined,
         created_at: data.created_at ? timestampToString(data.created_at) : new Date().toISOString(),
         updated_at: data.updated_at ? timestampToString(data.updated_at) : new Date().toISOString(),
       };
     });
+
+    // Sort in-memory for recipe_id queries (no composite index)
+    if (useClientSort) {
+      logs = logs.sort((a, b) => b.date.localeCompare(a.date));
+    }
 
     return NextResponse.json({ logs, count: logs.length });
   } catch (error) {
@@ -89,6 +114,8 @@ export async function POST(request: NextRequest) {
     if (body.occasion !== undefined) logData.occasion = body.occasion;
     if (body.weather !== undefined) logData.weather = body.weather;
     if (body.user_note !== undefined) logData.user_note = body.user_note;
+    if (body.photos !== undefined) logData.photos = body.photos;
+    if (body.preview_image_url !== undefined) logData.preview_image_url = body.preview_image_url;
     if (body.auto_tags !== undefined) logData.auto_tags = body.auto_tags;
 
     if (existing.exists) {
@@ -98,6 +125,7 @@ export async function POST(request: NextRequest) {
       // Set defaults for array fields
       logData.used_items ??= [];
       logData.modifications ??= [];
+      logData.photos ??= [];
       logData.auto_tags ??= [];
       await docRef.set(logData);
     }

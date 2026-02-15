@@ -94,7 +94,7 @@ describe("FeedPostCard", () => {
     render(<FeedPostCard post={mockPost} />);
     const links = screen.getAllByRole("link");
     const hrefs = links.map((l) => l.getAttribute("href"));
-    expect(hrefs).toContain("/feed/user/user-1");
+    expect(hrefs).toContain("/profile/user-1");
     expect(hrefs).toContain("/feed/post-1");
   });
 });

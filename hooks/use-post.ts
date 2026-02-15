@@ -107,6 +107,19 @@ export function usePost(postId: string) {
     [postId, mutateComments, mutate]
   );
 
+  const deletePost = useCallback(async () => {
+    if (!postId) return false;
+    try {
+      const res = await fetch(`/api/social/posts/${postId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Delete failed");
+      toast.success("投稿を削除しました");
+      return true;
+    } catch {
+      toast.error("投稿の削除に失敗しました");
+      return false;
+    }
+  }, [postId]);
+
   return {
     post: data?.post ?? null,
     comments: commentsData?.comments ?? [],
@@ -117,6 +130,7 @@ export function usePost(postId: string) {
     toggleLike,
     addComment,
     deleteComment,
+    deletePost,
     mutate: () => mutate(),
   };
 }

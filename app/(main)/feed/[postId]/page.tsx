@@ -1,7 +1,8 @@
 "use client";
 
 import { use, useState } from "react";
-import { Heart, MessageCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Heart, MessageCircle, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { RecipeStepCard } from "@/components/recipe-step-card";
@@ -17,6 +18,7 @@ export default function PostDetailPage({
   params: Promise<{ postId: string }>;
 }) {
   const { postId } = use(params);
+  const router = useRouter();
   const { user } = useAuth();
   const {
     post,
@@ -27,14 +29,26 @@ export default function PostDetailPage({
     toggleLike,
     addComment,
     deleteComment,
+    deletePost,
   } = usePost(postId);
 
   const { isFollowing, followerCount, toggleFollow } = useFollow(
     post?.user_id || ""
   );
   const [commentsOpen, setCommentsOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const isOwnPost = user?.uid === post?.user_id;
+
+  const handleDelete = async () => {
+    if (!confirm("この投稿を削除しますか？")) return;
+    setDeleting(true);
+    const ok = await deletePost();
+    if (ok) {
+      router.push("/feed");
+    }
+    setDeleting(false);
+  };
 
   if (isLoading) {
     return (
@@ -64,7 +78,7 @@ export default function PostDetailPage({
         {/* Author section */}
         <div className="flex items-center gap-3">
           <Link
-            href={`/feed/user/${post.user_id}`}
+            href={`/profile/${post.user_id}`}
             className="flex items-center gap-3 flex-1 min-w-0"
           >
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-neon-accent to-magic-pink flex items-center justify-center text-white text-sm font-bold shrink-0">
@@ -131,8 +145,19 @@ export default function PostDetailPage({
           </div>
         )}
 
-        {/* Steps summary */}
-        {post.steps_summary.length > 0 && (
+        {/* Recipe steps */}
+        {post.steps && post.steps.length > 0 ? (
+          <div>
+            <p className="text-sm font-medium text-alcheme-charcoal mb-3">
+              メイクステップ
+            </p>
+            <div className="space-y-3">
+              {post.steps.map((step, i) => (
+                <RecipeStepCard key={i} step={step} stepNumber={i + 1} />
+              ))}
+            </div>
+          </div>
+        ) : post.steps_summary.length > 0 ? (
           <div>
             <p className="text-sm font-medium text-alcheme-charcoal mb-3">
               ステップ概要
@@ -151,7 +176,7 @@ export default function PostDetailPage({
               ))}
             </div>
           </div>
-        )}
+        ) : null}
 
         {/* Actions bar */}
         <div className="flex items-center gap-6 py-3 border-t border-b border-alcheme-sand">
@@ -181,6 +206,17 @@ export default function PostDetailPage({
               {post.comment_count}
             </span>
           </button>
+
+          {isOwnPost && (
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="ml-auto flex items-center gap-1.5 text-alcheme-muted hover:text-red-500 transition-colors btn-squishy disabled:opacity-50"
+            >
+              <Trash2 size={18} />
+              <span className="text-xs">削除</span>
+            </button>
+          )}
         </div>
       </div>
 

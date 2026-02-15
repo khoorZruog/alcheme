@@ -1,20 +1,58 @@
 "use client";
 
-import { use, useState, useCallback } from "react";
-import { ChevronDown, ChevronUp, Brain, Lightbulb, Share2, Globe, Trash2 } from "lucide-react";
+import { use, useState, useCallback, useMemo } from "react";
+import Link from "next/link";
+import { ChevronDown, ChevronUp, Brain, Lightbulb, Share2, Globe, Trash2, Heart, CalendarHeart, ImagePlus } from "lucide-react";
 import { toast } from "sonner";
+import useSWR from "swr";
 import { PageHeader } from "@/components/page-header";
 import { RecipeStepCard } from "@/components/recipe-step-card";
 import { RecipeFeedback } from "@/components/recipe-feedback";
 import { DetailSkeleton } from "@/components/loading-skeleton";
 import { useRecipe } from "@/hooks/use-recipe";
+import { fetcher } from "@/lib/api/fetcher";
+import { cn } from "@/lib/utils";
+import type { InventoryItem } from "@/types/inventory";
+import type { RecipeStep } from "@/types/recipe";
+import type { BeautyLogEntry } from "@/types/beauty-log";
+
+const MOOD_EMOJI: Record<string, string> = {
+  元気: "😊",
+  落ち着き: "😌",
+  ウキウキ: "🥰",
+  疲れ: "😤",
+};
 
 export default function RecipeDetailPage({ params }: { params: Promise<{ recipeId: string }> }) {
   const { recipeId } = use(params);
-  const { recipe, isLoading, error, submitFeedback, mutate, deleteRecipe } = useRecipe(recipeId);
+  const { recipe, isLoading, error, submitFeedback, toggleFavorite, mutate, deleteRecipe } = useRecipe(recipeId);
+  const { data: inventoryData } = useSWR<{ items: InventoryItem[] }>("/api/inventory", fetcher);
+  const { data: usageData } = useSWR<{ logs: BeautyLogEntry[] }>(
+    recipeId ? `/api/beauty-log?recipe_id=${recipeId}` : null,
+    fetcher
+  );
+
+  // Enrich recipe steps with color info from inventory
+  const enrichedSteps = useMemo(() => {
+    if (!recipe?.steps || !inventoryData?.items) return recipe?.steps ?? [];
+    const itemMap = new Map<string, InventoryItem>();
+    inventoryData.items.forEach((item) => itemMap.set(item.id, item));
+    return recipe.steps.map((step): RecipeStep => {
+      const item = itemMap.get(step.item_id);
+      if (!item) return step;
+      return {
+        ...step,
+        color_code: step.color_code ?? item.color_code,
+        color_name: step.color_name ?? item.color_name,
+        brand: step.brand ?? item.brand,
+      };
+    });
+  }, [recipe?.steps, inventoryData?.items]);
+
   const [thinkingOpen, setThinkingOpen] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [generatingImage, setGeneratingImage] = useState(false);
 
   const handleDelete = useCallback(async () => {
     if (deleting) return;
@@ -65,6 +103,23 @@ export default function RecipeDetailPage({ params }: { params: Promise<{ recipeI
     }
   }, [recipeId, publishing, mutate]);
 
+  const handleGenerateImage = useCallback(async () => {
+    if (generatingImage) return;
+    setGeneratingImage(true);
+    try {
+      const res = await fetch(`/api/recipes/${recipeId}/generate-image`, {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error();
+      toast.success("画像を生成しました！");
+      mutate();
+    } catch {
+      toast.error("画像の生成に失敗しました");
+    } finally {
+      setGeneratingImage(false);
+    }
+  }, [recipeId, generatingImage, mutate]);
+
   if (isLoading) {
     return (
       <div>
@@ -105,6 +160,8 @@ export default function RecipeDetailPage({ params }: { params: Promise<{ recipeI
     );
   }
 
+  const usageLogs = usageData?.logs ?? [];
+
   return (
     <div>
       <PageHeader title="レシピ詳細" backHref="/recipes" />
@@ -112,9 +169,25 @@ export default function RecipeDetailPage({ params }: { params: Promise<{ recipeI
       <div className="px-4 py-4 space-y-6">
         {/* Title & Meta */}
         <div className="space-y-2">
-          <h2 className="text-lg font-display font-bold text-alcheme-charcoal">
-            {recipe.recipe_name}
-          </h2>
+          <div className="flex items-start justify-between gap-2">
+            <h2 className="text-lg font-display font-bold text-alcheme-charcoal">
+              {recipe.recipe_name}
+            </h2>
+            <button
+              onClick={toggleFavorite}
+              className="p-2 -mr-2 -mt-1 btn-squishy"
+              aria-label={recipe.is_favorite ? "お気に入りを解除" : "お気に入りに追加"}
+            >
+              <Heart
+                className={cn(
+                  "h-6 w-6 transition-colors",
+                  recipe.is_favorite
+                    ? "fill-alcheme-rose text-alcheme-rose"
+                    : "text-gray-300"
+                )}
+              />
+            </button>
+          </div>
           <p className="text-sm text-alcheme-muted">{recipe.user_request}</p>
           <div className="flex items-center gap-3 text-xs text-alcheme-muted">
             {recipe.match_score != null && (
@@ -173,7 +246,7 @@ export default function RecipeDetailPage({ params }: { params: Promise<{ recipeI
         </div>
 
         {/* Preview Image */}
-        {recipe.preview_image_url && (
+        {recipe.preview_image_url ? (
           <div className="rounded-card overflow-hidden border border-alcheme-sand">
             <img
               src={recipe.preview_image_url}
@@ -186,6 +259,15 @@ export default function RecipeDetailPage({ params }: { params: Promise<{ recipeI
               </div>
             )}
           </div>
+        ) : (
+          <button
+            onClick={handleGenerateImage}
+            disabled={generatingImage}
+            className="w-full flex items-center justify-center gap-2 py-4 rounded-card border-2 border-dashed border-gray-200 text-sm text-text-muted hover:border-neon-accent hover:text-neon-accent transition-colors btn-squishy disabled:opacity-50"
+          >
+            <ImagePlus className="h-5 w-5" />
+            {generatingImage ? "画像を生成中..." : "イメージ画像を生成"}
+          </button>
         )}
 
         {/* Thinking Process (collapsible) */}
@@ -218,12 +300,12 @@ export default function RecipeDetailPage({ params }: { params: Promise<{ recipeI
         )}
 
         {/* Steps */}
-        {recipe.steps && recipe.steps.length > 0 && (
+        {enrichedSteps.length > 0 && (
           <div>
             <p className="text-sm font-medium text-alcheme-charcoal mb-4">ステップ</p>
             <div>
-              {recipe.steps.map((step, i) => (
-                <RecipeStepCard key={step.step} step={step} stepNumber={i + 1} />
+              {enrichedSteps.map((step, i) => (
+                <RecipeStepCard key={i} step={step} stepNumber={i + 1} />
               ))}
             </div>
           </div>
@@ -245,6 +327,39 @@ export default function RecipeDetailPage({ params }: { params: Promise<{ recipeI
             </ul>
           </div>
         )}
+
+        {/* Usage History */}
+        <div>
+          <p className="flex items-center gap-2 text-sm font-medium text-alcheme-charcoal mb-3">
+            <CalendarHeart className="h-4 w-4 text-alcheme-gold" />
+            使用履歴
+          </p>
+          {usageLogs.length === 0 ? (
+            <p className="text-xs text-alcheme-muted">まだ使用されていません</p>
+          ) : (
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              {usageLogs.map((log) => (
+                <Link
+                  key={log.id}
+                  href={`/beauty-log/${log.id}`}
+                  className="flex-shrink-0 w-24 rounded-xl bg-white p-3 text-center hover:shadow-md transition-shadow btn-squishy"
+                >
+                  <p className="text-xs font-bold text-alcheme-charcoal">
+                    {new Date(log.date + "T00:00:00").toLocaleDateString("ja-JP", { month: "short", day: "numeric" })}
+                  </p>
+                  {log.mood && (
+                    <p className="text-sm mt-0.5">{MOOD_EMOJI[log.mood] ?? "💄"}</p>
+                  )}
+                  {log.self_rating && (
+                    <p className="text-[10px] text-alcheme-gold mt-0.5">
+                      {"★".repeat(log.self_rating)}
+                    </p>
+                  )}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Feedback */}
         <RecipeFeedback

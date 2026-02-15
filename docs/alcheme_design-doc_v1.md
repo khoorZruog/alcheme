@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| **Version** | 1.1 |
-| **Date** | 2026-02-15 |
+| **Version** | 1.2 |
+| **Date** | 2026-02-16 |
 | **Author** | Eri Kaneko (Product Owner) |
-| **Status** | Phase 1 Implementation Complete |
+| **Status** | Phase 2 Beta Complete (Batch 0.5〜8.5) |
 | **Related** | alcheme_PRD_v4.md, alcheme_rollout-plan_phase-0.md |
 
 > 本ドキュメントは、alche:me の技術的な実現方法を詳細に記述するDesign Docである。PRD v4 に定義された要件を、どのようなアーキテクチャ・技術スタック・データモデルで実現するかを明確にする。
@@ -55,7 +55,9 @@ PRD v4 で定義された alche:me のフルビジョン（16+エージェント
 
 ### 2.1 アーキテクチャ概要
 
-BFF（Backend for Frontend）パターンを採用する。Next.js API Routes がフロントエンドのリクエストを仲介し、ADKエージェント群は Vertex AI Agent Engine にデプロイする。Agent Engine のマネージドインフラにより、スケーリング・管理・運用を効率化する。
+BFF（Backend for Frontend）パターンを採用する。Next.js API Routes がフロントエンドのリクエストを仲介し、ADKエージェント群は **Cloud Run 上の FastAPI + ADK Runner** でホストする。Cloud Run のコンテナベースインフラにより、柔軟なデプロイ・自動スケーリング・カスタムミドルウェア（SSEストリーミング、セッション管理等）を実現する。
+
+> **注記 (2026-02-16):** 当初 Vertex AI Agent Engine の利用を検討したが（ADR-002参照）、SSEストリーミングやカスタムセッション管理の要件から Cloud Run + FastAPI + ADK Runner 構成を採用した。
 
 ### 2.2 全体構成図
 
@@ -82,17 +84,17 @@ BFF（Backend for Frontend）パターンを採用する。Next.js API Routes �
 │  │  認証ミドルウェア (Firebase Auth Token 検証)              │   │
 │  │  セッション管理 / レート制限 / リクエスト整形              │   │
 │  │  画像アップロード (Cloud Storage 直接 or signed URL)      │   │
-│  │  Agent Engine API 呼び出し / レスポンスストリーミング     │   │
+│  │  Cloud Run Agent Server 呼び出し / SSEストリーミング      │   │
 │  └──────────────────────────────────────────────────────────┘   │
 │                              │                                   │
 └──────────────────────────────┼───────────────────────────────────┘
-                               │ gRPC / REST
+                               │ REST (X-API-Key 認証)
                                ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│           Vertex AI Agent Engine (Managed)                        │
+│           Cloud Run — Agent Server (FastAPI + ADK Runner)         │
 │                                                                  │
 │  ┌──────────────────────────────────────────────────────────┐   │
-│  │          Google ADK (Python) — App Container              │   │
+│  │          FastAPI + Google ADK Runner (Python)              │   │
 │  │                                                           │   │
 │  │  ┌─────────────────────────────────────────────────┐     │   │
 │  │  │      Root Agent (Concierge / Conductor)          │     │   │
@@ -138,8 +140,8 @@ BFF（Backend for Frontend）パターンを採用する。Next.js API Routes �
 
 | Phase | 追加コンポーネント | アーキテクチャ変更 |
 |-------|------------------|-----------------|
-| **Phase 1 (MVP)** ✅ | Inventory Manager, Product Search, Alchemist, Concierge | ✅ 完了 (2026-02-15)。Custom FastAPI + ADK Runner + InMemorySessionService。Simulator は Phase 2 B1 で実装予定。 |
-| **Phase 2 (Beta)** | Trend Hunter, TPO Tactician, Memory Keeper, Profiler, Makeup Instructor | ParallelAgent による並列情報収集の追加。VertexAiRagMemoryService でBeauty Log学習。SNS用 Firestore コレクション追加。 |
+| **Phase 1 (MVP)** ✅ | Inventory Manager, Product Search, Alchemist, Concierge | ✅ 完了 (2026-02-15)。Cloud Run (FastAPI + ADK Runner) + InMemorySessionService。 |
+| **Phase 2 (Beta)** ✅ | Simulator, Memory Keeper, Trend Hunter, TPO Tactician, Profiler, Makeup Instructor + SNS + Beauty Log + UX改善 | ✅ Batch 0.5〜8.5 完了。Cloud Run 2サービス構成 (web + agent)。DatabaseSessionService (SQLite) + InMemoryMemoryService。SNS/フィード/フォロー/コメント。登録4パターン、フィルタ・ソート、テーマ提案タップUI。 |
 | **Phase 3 (Launch)** | Content Curator, Health Monitor, Event Strategist, + SNS本格展開 | BigQuery によるB2Bデータ分析基盤。Cloud Tasks による非同期処理。Pub/Sub によるイベント駆動。 |
 | **Phase 4 (Growth)** | EC連携、ネイティブアプリ、グローバル展開 | Cloud CDN + マルチリージョン。React Native or Flutter によるネイティブアプリ。Stripe/決済基盤。 |
 
@@ -161,7 +163,7 @@ BFF（Backend for Frontend）パターンを採用する。Next.js API Routes �
 | 技術 | 選定理由 |
 |------|---------|
 | **Google ADK (Python)** | Googleの公式エージェント開発フレームワーク。マルチエージェント構成（Sequential/Parallel/Loop/Custom）を宣言的に定義可能。Gemini モデルとのネイティブ統合。Session/State/Artifact/Memory の組み込み管理。 |
-| **Vertex AI Agent Engine** | ADK エージェントのマネージドホスティング。自動スケーリング、バージョニング、モニタリングを提供。Cloud Run へのフォールバックデプロイも可能（ADK は両方に対応）。 |
+| **Cloud Run + FastAPI** | ADK エージェントのホスティング。FastAPI でカスタム SSE ストリーミング、セッション管理、プログレス通知を実装。Cloud Build による自動デプロイ。ADK Runner でマルチエージェント協調を管理。 |
 | **Gemini 2.5 Flash** | メイン推論モデル。高速・低コスト。画像認識、テキスト生成、JSON構造化出力に対応。Phase 0 で実用レベルを確認済み。 |
 | **Gemini 2.5 Pro** | 高精度が求められるタスク（複雑な代用レシピ推論、Profiler の長期パターン分析等）に使用。 |
 | **Gemini 2.5 Flash Image** | 仕上がりプレビュー・AIキャラクターイメージ生成。$0.039/image のコスト効率。GA済み。フォールバックとして Gemini 2.0 Flash（ネイティブ画像生成対応）も利用可能。 |
@@ -472,7 +474,7 @@ gs://alcheme-{env}/
 
 ### 5.1 BFF (Next.js API Routes) エンドポイント
 
-基本方針として、フロントエンドは Next.js API Routes（BFF）を経由して ADK Agent Engine と通信する。BFF は認証検証、レート制限、レスポンス整形を担当する。
+基本方針として、フロントエンドは Next.js API Routes（BFF）を経由して Cloud Run 上の FastAPI Agent Server と通信する。BFF は認証検証、レート制限、レスポンス整形を担当する。
 
 #### 認証・ユーザー
 
@@ -528,29 +530,36 @@ gs://alcheme-{env}/
 | POST | `/api/posts/{postId}/arrange` | アレンジ投稿（つくれぽ） |
 | POST | `/api/users/{userId}/follow` | フォロー |
 
-### 5.2 Agent Engine との通信
+### 5.2 Agent Server との通信
 
-BFF から Agent Engine へはストリーミング対応の gRPC / REST 呼び出しを行う。ADK の `Runner` がイベントベースでエージェント間の連携を管理する。
+BFF から Cloud Run Agent Server へは REST + SSE で通信する。Agent Server は FastAPI + ADK Runner で構成され、SSE イベントストリーミングでリアルタイムレスポンスを返す。
 
 ```python
-# BFF → Agent Engine 呼び出しの概念的なフロー
+# Agent Server (FastAPI) の実装パターン
 from google.adk.runners import Runner
 from google.adk.sessions import DatabaseSessionService
 
 runner = Runner(
     agent=root_agent,
     app_name="alcheme",
-    session_service=DatabaseSessionService(db_url=FIRESTORE_URL)
+    session_service=DatabaseSessionService(db_url=SESSION_DB_URL)
 )
 
-# ストリーミングレスポンス
-async for event in runner.run_async(
-    user_id=user_id,
-    session_id=session_id,
-    new_message=Content(role="user", parts=[Part.from_text(message)])
-):
-    yield event  # SSE でフロントエンドへ送信
+# SSE ストリーミングレスポンス
+@app.post("/chat")
+async def chat(request: ChatRequest):
+    async def event_stream():
+        async for event in runner.run_async(
+            user_id=user_id,
+            session_id=f"chat-{user_id}",
+            new_message=Content(role="user", parts=[Part.from_text(message)])
+        ):
+            # SSE イベントタイプ: text_delta, recipe_card, preview_image, progress, done, error
+            yield f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
 ```
+
+BFF → Agent Server 間は `X-API-Key` ヘッダーによる共有シークレット認証（`AGENT_API_KEY` 環境変数）を使用。開発環境では省略可能。
 
 ---
 
@@ -789,8 +798,8 @@ memory_service = VertexAiRagMemoryService(
 
 | フェーズ | 想定ユーザー数 | インフラ |
 |---------|-------------|---------|
-| Phase 1 | 50人 (クローズドβ) | Agent Engine 最小構成。Firestore 無料枠内。 |
-| Phase 2 | 500人 (オープンβ) | Agent Engine 自動スケーリング。Firestore 有料プラン。 |
+| Phase 1 | 50人 (クローズドβ) | Cloud Run 最小構成（web + agent 各1インスタンス）。Firestore 無料枠内。 |
+| Phase 2 | 500人 (オープンβ) | Cloud Run 自動スケーリング。Firestore 有料プラン。 |
 | Phase 3 | 5,000人 (ローンチ) | Cloud CDN + マルチインスタンス。BigQuery 連携。 |
 | Phase 4 | 50,000人+ (グロース) | マルチリージョン。キャッシュ層追加（Redis / Memorystore）。 |
 
@@ -803,15 +812,15 @@ memory_service = VertexAiRagMemoryService(
 | **バッチ処理** | 期限チェック、ポートフォリオ分析は夜間バッチで実行。 |
 | **画像最適化** | アップロード時に WebP 変換 + リサイズ。サムネイル・カード用の自動生成。 |
 
-### 8.4 Agent Engine コールドスタート対策
+### 8.4 Cloud Run コールドスタート対策
 
-Agent Engine は初回リクエスト時のレイテンシが問題になりうる。
+Cloud Run は初回リクエスト時にコンテナ起動のレイテンシが発生しうる。
 
 | 対策 | 詳細 |
 |------|------|
-| **Keep-alive リクエスト** | Cloud Scheduler で定期的に軽量リクエストを送信し、インスタンスを暖機。 |
-| **フロントエンドUX** | 初回ロード時にスケルトンUIとアニメーションで体感待ち時間を短縮。「AIスタイリストが準備中...」の演出。 |
-| **最小インスタンス数** | Agent Engine の `min_instance_count` を1以上に設定（有料だが、UX改善効果大）。 |
+| **最小インスタンス数** | Cloud Run の `--min-instances=1` でインスタンスを常時稼働（Agent Server側は特に重要）。 |
+| **フロントエンドUX** | 初回ロード時にスケルトンUIとアニメーションで体感待ち時間を短縮。「AIスタイリストが準備中...」の演出 + 回転ヒント。 |
+| **リアルタイム進捗表示** | SSE `progress` イベントでツール実行状況をリアルタイム表示（「在庫を確認中...」「レシピを考え中...」等）。 |
 
 ---
 
@@ -861,11 +870,11 @@ eval_dataset = [
 
 ### 9.3 テスト環境
 
-| 環境 | 用途 | Firestore | Agent Engine |
+| 環境 | 用途 | Firestore | Agent Server |
 |------|------|-----------|--------------|
-| **Local** | 開発・ユニットテスト | Firebase Emulator | ADK CLI (`adk web`) |
-| **Staging** | 統合テスト・QA | Firestore テスト用プロジェクト | Agent Engine ステージング版 |
-| **Production** | 本番 | 本番 Firestore | Agent Engine 本番版 |
+| **Local** | 開発・ユニットテスト | Firebase Emulator or 本番接続 | `uvicorn agent/server.py` (localhost:8080) |
+| **Staging** | 統合テスト・QA | Firestore テスト用プロジェクト | Cloud Run (staging) |
+| **Production** | 本番 | 本番 Firestore | Cloud Run (production) |
 
 ### 9.4 品質ゲート
 
@@ -890,14 +899,15 @@ eval_dataset = [
 │                    GCP Project: alcheme-prod             │
 │                                                          │
 │  ┌──────────────────────────────────────────────────┐   │
-│  │  Vertex AI Agent Engine                           │   │
-│  │  - alcheme-agent (Production)                    │   │
-│  │  - alcheme-agent-staging (Staging)               │   │
+│  │  Cloud Run — Web Service                          │   │
+│  │  - alcheme-web (Next.js フロントエンド + BFF)     │   │
+│  │  - Dockerfile (Node.js, port 3000)                │   │
 │  └──────────────────────────────────────────────────┘   │
 │                                                          │
 │  ┌──────────────────────────────────────────────────┐   │
-│  │  Cloud Run (or Vercel)                            │   │
-│  │  - alcheme-web (Next.js フロントエンド + BFF)     │   │
+│  │  Cloud Run — Agent Service                        │   │
+│  │  - alcheme-agent (FastAPI + ADK Runner)           │   │
+│  │  - agent/Dockerfile (Python, port 8080)           │   │
 │  └──────────────────────────────────────────────────┘   │
 │                                                          │
 │  ┌──────────────────────────────────────────────────┐   │
@@ -943,28 +953,25 @@ eval_dataset = [
 3. Cloud Run へデプロイ（or Vercel へ自動デプロイ）
 4. ヘルスチェック確認後、トラフィック切り替え
 
-#### エージェント（ADK on Agent Engine）
+#### エージェント（ADK on Cloud Run）
 
 1. `agent/` ディレクトリの変更を検知
-2. ADK 評価テスト実行
-3. Agent Engine の新バージョンをデプロイ
-4. カナリアリリース（10% → 50% → 100%）
+2. pytest でユニットテスト実行
+3. Docker イメージビルド + Cloud Run にデプロイ
+4. ヘルスチェック確認後、トラフィック切り替え
 
 ```bash
-# ADK Agent のデプロイコマンド例
-adk deploy agent \
-  --project=alcheme-prod \
-  --region=asia-northeast1 \
-  --agent-name=alcheme-agent \
-  --version=v1.2.0
+# Cloud Build による自動デプロイ (cloudbuild.yaml)
+# main ブランチへの push で web + agent の両サービスが自動デプロイ
+gcloud builds submit --config=cloudbuild.yaml
 ```
 
 ### 10.4 ロールバック戦略
 
 | コンポーネント | ロールバック方法 |
 |-------------|--------------|
-| **フロントエンド** | Cloud Run のリビジョン切り替え（即時）/ Vercel のロールバック |
-| **エージェント** | Agent Engine のバージョン切り替え |
+| **フロントエンド** | Cloud Run のリビジョン切り替え（即時） |
+| **エージェント** | Cloud Run のリビジョン切り替え（即時） |
 | **Firestore スキーマ** | 後方互換性を維持する設計。破壊的変更は Migration Script で段階的に実施。 |
 
 ### 10.5 監視・アラート
@@ -973,7 +980,7 @@ adk deploy agent \
 |---------|-------|-----------|
 | API レスポンスタイム | Cloud Monitoring | P95 > 15秒 |
 | エラー率 | Error Reporting | > 5% / 5分 |
-| Agent Engine ヘルス | Cloud Monitoring | インスタンス数 = 0 |
+| Agent Server ヘルス | Cloud Monitoring | Cloud Run インスタンス数 = 0 |
 | Firestore 読み取り | Cloud Monitoring | 日次リミットの80%到達 |
 | Gemini API コスト | Budget Alert | 月間予算の80%到達 |
 | Hallucination検知 | Custom Metric | validate_recipe_items 失敗率 > 0% |
@@ -1002,11 +1009,13 @@ Phase 0（Zennハッカソン）で構築済みのコードの再利用方針。
 
 **理由:** 認証・レート制限・レスポンス整形の一元管理。Agent Engine API のアクセス制御。将来的なバックエンド変更（Agent Engine → Cloud Run）の影響をフロントエンドから隔離。
 
-### ADR-002: Agent Engine を第一選択、Cloud Run をフォールバック
+### ADR-002: Cloud Run + FastAPI + ADK Runner を採用
 
-**決定:** Agent Engine のマネージドインフラを優先し、制約が発生した場合は Cloud Run へフォールバック。
+**決定:** Cloud Run 上で FastAPI + ADK Runner を使用してエージェントをホスト。当初 Agent Engine を第一選択としていたが、SSEストリーミング・カスタムセッション管理・プログレス通知等の要件から Cloud Run を採用した。
 
-**理由:** ADK は両方に対応。Agent Engine は自動スケーリング・バージョニング・セッション管理を提供し、運用負荷を最小化。
+**理由:** Cloud Run は SSE ストリーミングの完全制御、FastAPI によるカスタムミドルウェア（API Key 認証、進捗通知、レシピカード抽出等）、DatabaseSessionService のカスタム設定が可能。ADK Runner はどちらの環境でも同じコードで動作するため、将来 Agent Engine への移行も容易。
+
+**結果:** 2サービス構成 — `alcheme-web` (Next.js, Cloud Run) + `alcheme-agent` (FastAPI + ADK, Cloud Run)。Cloud Build (`cloudbuild.yaml`) で main ブランチ push 時に両サービスを自動デプロイ。
 
 ### ADR-003: ユーザー参加型DB設計
 
@@ -1023,5 +1032,5 @@ Phase 0（Zennハッカソン）で構築済みのコードの再利用方針。
 ---
 
 *— End of Document —*
-*Version 1.0 | Last Updated: 2026-02-13*
+*Version 1.2 | Last Updated: 2026-02-16*
 *Author: Eri Kaneko (Product Owner)*

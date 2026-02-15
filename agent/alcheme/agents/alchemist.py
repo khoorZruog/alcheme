@@ -8,6 +8,7 @@ from ..tools.inventory_tools import (
     validate_recipe_items,
 )
 from ..tools.recipe_tools import save_recipe
+from ..tools.suggestion_tools import save_suggestion
 
 
 def create_alchemist_agent() -> LlmAgent:
@@ -26,6 +27,7 @@ def create_alchemist_agent() -> LlmAgent:
             filter_inventory_by_category,
             validate_recipe_items,
             save_recipe,
+            save_suggestion,
         ],
         output_key="session:last_recipe",
     )

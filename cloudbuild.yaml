@@ -4,6 +4,9 @@ substitutions:
   _WEB_SERVICE: alcheme-web
   _AGENT_SERVICE: alcheme-agent
   _TAG: latest
+  _RAKUTEN_APP_ID: ""
+  _GOOGLE_WEATHER_API_KEY: ""
+  _GCS_PREVIEW_BUCKET: ""
 
 steps:
   # ── Step 1: Build agent image ──
@@ -41,7 +44,7 @@ steps:
       - "--max-instances"
       - "3"
       - "--set-env-vars"
-      - "GOOGLE_CLOUD_PROJECT=$PROJECT_ID"
+      - "GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_GENAI_USE_VERTEXAI=TRUE,GOOGLE_CLOUD_LOCATION=${_REGION},RAKUTEN_APP_ID=${_RAKUTEN_APP_ID},GOOGLE_WEATHER_API_KEY=${_GOOGLE_WEATHER_API_KEY},GCS_PREVIEW_BUCKET=${_GCS_PREVIEW_BUCKET}"
 
   # ── Step 4: Get agent URL ──
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"

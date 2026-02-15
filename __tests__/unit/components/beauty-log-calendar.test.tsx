@@ -9,6 +9,7 @@ const mockLog: BeautyLogEntry = {
   used_items: [],
   modifications: [],
   self_rating: 4,
+  photos: [],
   auto_tags: [],
   created_at: "2026-02-10T00:00:00Z",
   updated_at: "2026-02-10T00:00:00Z",

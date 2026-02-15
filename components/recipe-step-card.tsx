@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { RecipeStep } from "@/types/recipe";
@@ -32,9 +33,27 @@ export function RecipeStepCard({ step, stepNumber }: RecipeStepCardProps) {
           )}
         </div>
 
-        <p className="text-sm font-medium text-alcheme-charcoal">
-          {step.item_name}
-        </p>
+        {step.item_id ? (
+          <Link
+            href={`/inventory/${step.item_id}`}
+            className="inline-flex items-baseline gap-1.5 btn-squishy group"
+          >
+            <span className="text-sm font-bold text-text-ink group-hover:text-neon-accent transition">
+              {step.item_name}
+            </span>
+            {(step.color_code || step.color_name) && (
+              <span className="text-xs">
+                {step.color_code && <span className="font-bold text-neon-accent">#{step.color_code}</span>}
+                {step.color_code && step.color_name && " "}
+                {step.color_name && <span className="text-text-muted">{step.color_name}</span>}
+              </span>
+            )}
+          </Link>
+        ) : (
+          <p className="text-sm font-medium text-alcheme-charcoal">
+            {step.item_name}
+          </p>
+        )}
 
         <p className="mt-1 text-sm text-alcheme-muted leading-relaxed">
           {step.instruction}
@@ -42,7 +61,7 @@ export function RecipeStepCard({ step, stepNumber }: RecipeStepCardProps) {
 
         {step.substitution_note && (
           <div className="mt-2 rounded-lg bg-alcheme-sand p-3 text-xs text-alcheme-muted leading-relaxed">
-            💡 {step.substitution_note}
+            {step.substitution_note}
           </div>
         )}
       </div>

@@ -65,10 +65,12 @@ _REGION_DEFAULTS: dict[str, str] = {
 
 
 def _classify_area(step: dict) -> str:
-    """Map a recipe step to a face region based on category/description."""
-    category = (step.get("category") or "").strip()
-    description = (step.get("description") or step.get("action") or "").strip()
-    combined = f"{category} {description}"
+    """Map a recipe step to a face region based on area/category/instruction."""
+    # Check 'area' first (Alchemist output format), then 'category'
+    area = (step.get("area") or step.get("category") or "").strip()
+    instruction = (step.get("instruction") or step.get("description") or step.get("action") or "").strip()
+    item_name = (step.get("item_name") or step.get("product_name") or "").strip()
+    combined = f"{area} {instruction} {item_name}"
 
     for keyword, region in _AREA_MAP.items():
         if keyword in combined:
@@ -80,20 +82,26 @@ def _describe_step_makeup(step: dict) -> str:
     """Build an English description of a single makeup step for the image prompt."""
     parts = []
 
-    # Product and color info
-    product = step.get("product_name") or step.get("item_name") or ""
+    # Product and color info — support both Alchemist format and extended format
+    product = step.get("item_name") or step.get("product_name") or ""
     brand = step.get("brand") or ""
     color = step.get("color_description") or step.get("color") or ""
     texture = step.get("texture") or ""
-    action = step.get("action") or step.get("description") or ""
+    technique = step.get("technique") or ""
+    instruction = step.get("instruction") or step.get("action") or step.get("description") or ""
+    substitution = step.get("substitution_note") or ""
 
     if color:
         parts.append(color)
     if texture:
         parts.append(f"{texture} finish")
-    if action:
-        # Keep the Japanese action in parentheses for Gemini's world knowledge
-        parts.append(f"({action})")
+    if technique and technique != "standard":
+        parts.append(f"({technique})")
+    if instruction:
+        # Keep the Japanese instruction for Gemini's world knowledge
+        parts.append(f"({instruction})")
+    if substitution:
+        parts.append(f"[note: {substitution}]")
     if brand and product:
         parts.append(f"[inspired by {brand} {product}]")
     elif product:

@@ -16,6 +16,14 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith(route)
   );
 
+  // Root path: redirect based on auth state
+  if (pathname === '/') {
+    if (session) {
+      return NextResponse.redirect(new URL('/chat', request.url));
+    }
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+
   // Redirect to login if accessing protected route without session
   if (isProtectedRoute && !session) {
     return NextResponse.redirect(new URL('/login', request.url));

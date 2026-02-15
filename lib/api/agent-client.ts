@@ -4,7 +4,7 @@
 
 const AGENT_URL = process.env.ADK_AGENT_URL || "http://localhost:8080";
 const AGENT_API_KEY = process.env.AGENT_API_KEY || "";
-const AGENT_TIMEOUT = 90_000; // 90 seconds – image analysis can take longer
+const AGENT_TIMEOUT = 200_000; // 200 seconds – image generation can take up to 3 minutes
 
 function getHeaders(): Record<string, string> {
   const headers: Record<string, string> = {

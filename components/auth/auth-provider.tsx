@@ -6,6 +6,7 @@ import { auth } from '@/lib/firebase/client';
 
 export interface AlchemeUserProfile {
   displayName: string | null;
+  photoURL: string | null;
   bio: string | null;
   personalColor: string | null;
   skinType: string | null;
@@ -27,6 +28,7 @@ interface AuthContextType {
 
 const DEFAULT_PROFILE: AlchemeUserProfile = {
   displayName: null,
+  photoURL: null,
   bio: null,
   personalColor: null,
   skinType: null,
