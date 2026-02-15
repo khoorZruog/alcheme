@@ -1,0 +1,137 @@
+[
+    {
+        "id": "item_001",
+        "category": "Lip",
+        "brand": "KATE",
+        "product_name": "リップモンスター",
+        "color_description": "マットレッド（深みのある赤）",
+        "texture": "matte",
+        "estimated_remaining": "80%"
+    },
+    {
+        "id": "item_002",
+        "category": "Lip",
+        "brand": "rom&nd",
+        "product_name": "ジューシーラスティングティント",
+        "color_description": "フィグフィグ（くすみピンク）",
+        "texture": "glossy",
+        "estimated_remaining": "60%"
+    },
+    {
+        "id": "item_003",
+        "category": "Cheek",
+        "brand": "CANMAKE",
+        "product_name": "グロウフルールチークス",
+        "color_description": "コーラルピンク",
+        "texture": "shimmer",
+        "estimated_remaining": "70%"
+    },
+    {
+        "id": "item_004",
+        "category": "Cheek",
+        "brand": "CEZANNE",
+        "product_name": "ナチュラルチークN",
+        "color_description": "ピーチピンク",
+        "texture": "powder",
+        "estimated_remaining": "50%"
+    },
+    {
+        "id": "item_005",
+        "category": "Eye",
+        "brand": "EXCEL",
+        "product_name": "スキニーリッチシャドウ",
+        "color_description": "ブラウン系4色パレット",
+        "texture": "shimmer",
+        "estimated_remaining": "40%"
+    },
+    {
+        "id": "item_006",
+        "category": "Eye",
+        "brand": "MAJOLICA MAJORCA",
+        "product_name": "シャドーカスタマイズ",
+        "color_description": "テディ（オレンジブラウン）",
+        "texture": "shimmer",
+        "estimated_remaining": "90%"
+    },
+    {
+        "id": "item_007",
+        "category": "Eye",
+        "brand": "CANMAKE",
+        "product_name": "パーフェクトスタイリストアイズ",
+        "color_description": "ピンクブラウン系5色",
+        "texture": "shimmer",
+        "estimated_remaining": "65%"
+    },
+    {
+        "id": "item_008",
+        "category": "Eye",
+        "brand": "DEJAVU",
+        "product_name": "ラスティンファインE",
+        "color_description": "ブラック（リキッドアイライナー）",
+        "texture": "liquid",
+        "estimated_remaining": "55%"
+    },
+    {
+        "id": "item_009",
+        "category": "Eye",
+        "brand": "HEROINE MAKE",
+        "product_name": "ロング&カールマスカラ",
+        "color_description": "ブラック",
+        "texture": "liquid",
+        "estimated_remaining": "45%"
+    },
+    {
+        "id": "item_010",
+        "category": "Base",
+        "brand": "PAUL & JOE",
+        "product_name": "モイスチュアライジングプライマー",
+        "color_description": "ラベンダーパール",
+        "texture": "cream",
+        "estimated_remaining": "30%"
+    },
+    {
+        "id": "item_011",
+        "category": "Base",
+        "brand": "MAYBELLINE",
+        "product_name": "フィットミー リキッドファンデーション",
+        "color_description": "120 クラシックアイボリー",
+        "texture": "liquid",
+        "estimated_remaining": "75%"
+    },
+    {
+        "id": "item_012",
+        "category": "Base",
+        "brand": "CEZANNE",
+        "product_name": "UVシルクカバーパウダー",
+        "color_description": "ライトベージュ",
+        "texture": "powder",
+        "estimated_remaining": "85%"
+    },
+    {
+        "id": "item_013",
+        "category": "Cheek",
+        "brand": "CEZANNE",
+        "product_name": "パールグロウハイライト",
+        "color_description": "シャンパンベージュ",
+        "texture": "shimmer",
+        "estimated_remaining": "95%"
+    },
+    {
+        "id": "item_014",
+        "category": "Eye",
+        "brand": "KATE",
+        "product_name": "デザイニングアイブロウ3D",
+        "color_description": "ブラウン系3色",
+        "texture": "powder",
+        "estimated_remaining": "60%"
+    },
+    {
+        "id": "item_015",
+        "category": "Other",
+        "brand": "KOSE",
+        "product_name": "メイクキープミスト",
+        "color_description": "透明",
+        "texture": "liquid",
+        "estimated_remaining": "50%"
+    }
+]

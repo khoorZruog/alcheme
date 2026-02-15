@@ -1,0 +1,105 @@
+substitutions:
+  _REGION: asia-northeast1
+  _AR_REPO: alcheme
+  _WEB_SERVICE: alcheme-web
+  _AGENT_SERVICE: alcheme-agent
+
+steps:
+  # ── Step 1: Build agent image ──
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      - "build"
+      - "-t"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/agent:$SHORT_SHA"
+      - "./agent"
+
+  # ── Step 2: Push agent image ──
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      - "push"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/agent:$SHORT_SHA"
+
+  # ── Step 3: Deploy agent to Cloud Run ──
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    entrypoint: gcloud
+    args:
+      - "run"
+      - "deploy"
+      - "${_AGENT_SERVICE}"
+      - "--image"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/agent:$SHORT_SHA"
+      - "--region"
+      - "${_REGION}"
+      - "--platform"
+      - "managed"
+      - "--no-allow-unauthenticated"
+      - "--port"
+      - "8080"
+      - "--memory"
+      - "1Gi"
+      - "--max-instances"
+      - "3"
+      - "--set-env-vars"
+      - "GOOGLE_CLOUD_PROJECT=$PROJECT_ID"
+
+  # ── Step 4: Get agent URL ──
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    entrypoint: bash
+    args:
+      - "-c"
+      - |
+        gcloud run services describe ${_AGENT_SERVICE} \
+          --region=${_REGION} \
+          --format='value(status.url)' > /workspace/agent_url.txt
+
+  # ── Step 5: Build web image ──
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      - "build"
+      - "-t"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/web:$SHORT_SHA"
+      - "--build-arg"
+      - "NEXT_PUBLIC_FIREBASE_API_KEY=${_FIREBASE_API_KEY}"
+      - "--build-arg"
+      - "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${_FIREBASE_AUTH_DOMAIN}"
+      - "--build-arg"
+      - "NEXT_PUBLIC_FIREBASE_PROJECT_ID=$PROJECT_ID"
+      - "--build-arg"
+      - "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${_FIREBASE_STORAGE_BUCKET}"
+      - "--build-arg"
+      - "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${_FIREBASE_MESSAGING_SENDER_ID}"
+      - "--build-arg"
+      - "NEXT_PUBLIC_FIREBASE_APP_ID=${_FIREBASE_APP_ID}"
+      - "--build-arg"
+      - "NEXT_PUBLIC_APP_URL=https://${_WEB_SERVICE}-${_REGION}-run.app"
+      - "."
+
+  # ── Step 6: Push web image ──
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      - "push"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/web:$SHORT_SHA"
+
+  # ── Step 7: Deploy web to Cloud Run ──
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    entrypoint: bash
+    args:
+      - "-c"
+      - |
+        AGENT_URL=$(cat /workspace/agent_url.txt)
+        gcloud run deploy ${_WEB_SERVICE} \
+          --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/web:$SHORT_SHA \
+          --region=${_REGION} \
+          --platform=managed \
+          --allow-unauthenticated \
+          --port=3000 \
+          --memory=512Mi \
+          --max-instances=5 \
+          --set-env-vars="NODE_ENV=production,ADK_AGENT_URL=$AGENT_URL,FIREBASE_PROJECT_ID=$PROJECT_ID,GOOGLE_CLOUD_PROJECT=$PROJECT_ID"
+
+images:
+  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/agent:$SHORT_SHA"
+  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/web:$SHORT_SHA"
+
+options:
+  logging: CLOUD_LOGGING_ONLY

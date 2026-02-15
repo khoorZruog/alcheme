@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+
+<html lang="ja"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Cosme Mixologist - Vanity Inventory</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=Noto+Serif+JP:wght@400;600;700&amp;family=Noto+Sans+JP:wght@300;400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#7c3bed",
+                        "background-light": "#f7f6f8",
+                        "background-dark": "#171121",
+                        "glass-border": "rgba(255, 255, 255, 0.4)",
+                        "glass-surface": "rgba(255, 255, 255, 0.65)",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "Noto Sans JP", "sans-serif"],
+                        "serif": ["Noto Serif JP", "serif"],
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        /* Liquid Aurora Background Animation */
+        @keyframes aurora {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .bg-aurora {
+            background: linear-gradient(-45deg, #f3e7ff, #e0c3fc, #dbeafe, #fce7f3);
+            background-size: 400% 400%;
+            animation: aurora 15s ease infinite;
+        }
+
+        .dark .bg-aurora {
+            background: linear-gradient(-45deg, #2e1065, #4c1d95, #1e1b4b, #312e81);
+            background-size: 400% 400%;
+            animation: aurora 15s ease infinite;
+        }
+
+        /* Glassmorphism Utilities */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+        
+        .dark .glass-panel {
+            background: rgba(30, 20, 50, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Squishy Button */
+        .btn-squishy {
+            transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 14px 0 rgba(124, 59, 237, 0.39);
+        }
+        .btn-squishy:active {
+            transform: scale(0.95);
+        }
+
+        /* Hide scrollbar for clean look */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-aurora min-h-screen text-gray-800 dark:text-gray-100 font-display selection:bg-primary selection:text-white">
+<!-- Mobile Container -->
+<div class="max-w-md mx-auto min-h-screen flex flex-col relative pb-24">
+<!-- Header Section -->
+<header class="pt-12 px-6 pb-6 sticky top-0 z-20">
+<div class="flex justify-between items-end mb-4">
+<div>
+<h1 class="font-serif text-3xl font-bold text-gray-900 dark:text-white tracking-tight drop-shadow-sm">
+                        私のドレッサー
+                    </h1>
+<p class="text-sm text-gray-600 dark:text-gray-300 font-medium mt-1">
+                        Total Items: 42 • Value: <span class="text-primary font-bold">S-Rank</span>
+</p>
+</div>
+<button class="w-10 h-10 rounded-full bg-white/50 dark:bg-black/30 backdrop-blur-md flex items-center justify-center border border-white/40 shadow-sm active:scale-95 transition-transform">
+<span class="material-icons text-gray-700 dark:text-white">notifications_none</span>
+</button>
+</div>
+<!-- Search Bar -->
+<div class="relative group">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<span class="material-icons text-gray-400">search</span>
+</div>
+<input class="block w-full pl-10 pr-3 py-3 rounded-xl border-none ring-1 ring-white/60 focus:ring-2 focus:ring-primary/50 bg-white/60 dark:bg-black/20 backdrop-blur-md shadow-sm placeholder-gray-500 text-sm transition-all" placeholder="ブランド、カテゴリで検索..." type="text"/>
+<div class="absolute inset-y-0 right-0 pr-2 flex items-center">
+<button class="p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+<span class="material-icons text-gray-400 text-lg">tune</span>
+</button>
+</div>
+</div>
+<!-- Category Pills -->
+<div class="flex gap-3 mt-4 overflow-x-auto no-scrollbar pb-2">
+<button class="px-4 py-2 rounded-full bg-primary text-white text-xs font-bold shadow-lg shadow-primary/30 whitespace-nowrap">
+                    全て (All)
+                </button>
+<button class="px-4 py-2 rounded-full bg-white/40 dark:bg-black/20 border border-white/30 text-gray-700 dark:text-gray-200 text-xs font-medium backdrop-blur-sm whitespace-nowrap hover:bg-white/60 transition-colors">
+                    リップ (Lip)
+                </button>
+<button class="px-4 py-2 rounded-full bg-white/40 dark:bg-black/20 border border-white/30 text-gray-700 dark:text-gray-200 text-xs font-medium backdrop-blur-sm whitespace-nowrap hover:bg-white/60 transition-colors">
+                    アイ (Eye)
+                </button>
+<button class="px-4 py-2 rounded-full bg-white/40 dark:bg-black/20 border border-white/30 text-gray-700 dark:text-gray-200 text-xs font-medium backdrop-blur-sm whitespace-nowrap hover:bg-white/60 transition-colors">
+                    ベース (Base)
+                </button>
+</div>
+</header>
+<!-- Main Bento Grid Content -->
+<main class="px-4 flex-1 overflow-y-auto no-scrollbar">
+<div class="grid grid-cols-2 gap-4 auto-rows-min pb-6">
+<!-- Item 1: SSR (Wide) -->
+<div class="col-span-2 glass-panel rounded-xl p-4 relative group overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+<div class="absolute top-3 right-3 z-10">
+<span class="px-2 py-1 rounded bg-gradient-to-r from-yellow-300 to-yellow-500 text-[10px] font-bold text-yellow-900 shadow-sm ring-1 ring-white/50 tracking-wider">SSR</span>
+</div>
+<div class="flex flex-row items-center gap-4">
+<div class="w-1/2 relative aspect-[4/3] rounded-lg overflow-hidden shadow-inner">
+<img alt="Luxury Eyeshadow Palette with four colors" class="object-cover w-full h-full transform group-hover:scale-110 transition-transform duration-700" data-alt="Luxury Eyeshadow Palette with four colors" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBIENBtOwwofpbaVepJKlTGJxLnuo8cQcvnUXU25ZCzaZK5tnEg93a737a4IGtrM2SRIhp6VRFALCcjmegRs_i3VuqV3rslMGQbkLiZZN69W9jwwmb-laC9tr8P7LsHN2y3LTyT1Cq9q6otP2_I1Cso-pywmsrWakqw6eQVSr3gXWJBFizI_C-Taa7Fvzs5aKgG6DkXuwAXkg78yBYFTfVPuXhBF-8DuGPMalKFDFNg5cZ4F5Syd6-cvdRphhZr4sgF3RE9-catUUA"/>
+<!-- Shine effect overlay -->
+<div class="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+</div>
+<div class="w-1/2 flex flex-col justify-between h-full py-1">
+<div>
+<h3 class="font-serif text-lg font-bold text-gray-900 dark:text-white leading-tight mb-1">レ キャトル オンブル</h3>
+<p class="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">Chanel</p>
+</div>
+<div class="mt-4">
+<div class="flex justify-between text-[10px] text-gray-500 mb-1 font-medium">
+<span>残量 (Amount)</span>
+<span>85%</span>
+</div>
+<div class="h-1.5 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full w-[85%]"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Item 2: SR (Tall) -->
+<div class="col-span-1 row-span-2 glass-panel rounded-xl p-3 relative group overflow-hidden shadow-sm flex flex-col">
+<div class="absolute top-3 left-3 z-10">
+<span class="px-2 py-0.5 rounded bg-gradient-to-r from-purple-300 to-purple-400 text-[10px] font-bold text-purple-900 shadow-sm ring-1 ring-white/50">SR</span>
+</div>
+<div class="flex-1 relative rounded-lg overflow-hidden mb-3 bg-gray-50 dark:bg-gray-800">
+<img alt="Tall elegant foundation bottle" class="object-cover w-full h-full" data-alt="Tall elegant foundation bottle" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA8SiyWtXxa4nt1I4j9ouxjz9ueH_9mv8gwi9R-M2Syz11KVMWiWJEykt3ZWbazNnXKzh69srNsguFmktlTHgb05YSFOCqY_6hWA_DWg1iY4CfZm-metIoOhtOaFVbePMwD1jko3IjLw7t2jpbTojnVVXQBAOEGzkfXpKhk-4O3cdrBHvJL09SSf_fu_2aG56zuAKUwuR4rtfn86eHQBt1888hnymf04yVBHfI7TC9GcEvvmT166IGWS6gxU06AFRAQOXPHKE1M-pk"/>
+</div>
+<div>
+<p class="text-[10px] text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">Dior</p>
+<h3 class="font-display text-sm font-bold text-gray-900 dark:text-white leading-tight mb-2">フォーエヴァー フルイド</h3>
+<div class="flex items-center gap-2">
+<div class="relative w-4 h-4">
+<svg class="w-full h-full -rotate-90" viewbox="0 0 36 36">
+<path class="text-gray-200 dark:text-gray-700" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="4"></path>
+<path class="text-primary" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-dasharray="40, 100" stroke-width="4"></path>
+</svg>
+</div>
+<span class="text-[10px] text-gray-600 dark:text-gray-300">40%</span>
+</div>
+</div>
+</div>
+<!-- Item 3: R (Square) -->
+<div class="col-span-1 glass-panel rounded-xl p-3 relative group overflow-hidden shadow-sm">
+<div class="absolute top-3 right-3 z-10">
+<span class="px-1.5 py-0.5 rounded bg-gray-200 dark:bg-gray-600 text-[9px] font-bold text-gray-600 dark:text-gray-200 shadow-sm">R</span>
+</div>
+<div class="aspect-square rounded-lg overflow-hidden mb-2 bg-gray-100 dark:bg-gray-800">
+<img alt="Pink lip gloss tube" class="object-cover w-full h-full" data-alt="Pink lip gloss tube" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDDH2TSXIGnpuksQzzKeANtJiYlPXVrbAe_JSUwxxcuJ-BAHOi_bOSoxXMJ8ZQS7n4dJsA6Q7KdBvhHV1bvpodeiobaXHqfEtw2cYqOV8Jaxuka840k-7tN__MutgvWvQ2NuB9sVgXfcSJZX1bchSf2MooFLs9_3wOjsVDPvU18_03RKg_VLwfpzbhs34NAzse9NJM5fzIt8BAxvgwSA283C-jq8TZEiZphOMM2Qp8_nkATuXI4uaT4xhz__jT2hBKypbDqXNm9hh8"/>
+</div>
+<p class="text-[9px] text-gray-500 font-medium uppercase">Rom&amp;nd</p>
+<h3 class="font-display text-xs font-bold text-gray-900 dark:text-white truncate">ジューシーラスティング</h3>
+</div>
+<!-- Item 4: R (Square) -->
+<div class="col-span-1 glass-panel rounded-xl p-3 relative group overflow-hidden shadow-sm">
+<div class="absolute top-3 right-3 z-10">
+<span class="px-1.5 py-0.5 rounded bg-gray-200 dark:bg-gray-600 text-[9px] font-bold text-gray-600 dark:text-gray-200 shadow-sm">R</span>
+</div>
+<div class="aspect-square rounded-lg overflow-hidden mb-2 bg-gray-100 dark:bg-gray-800">
+<img alt="Powder blush compact" class="object-cover w-full h-full" data-alt="Powder blush compact" src="https://lh3.googleusercontent.com/aida-public/AB6AXuArhacfd09X8NcGdTwEVek7yKlAGKfJlUR_bWEeNWJEaP02v-cQvfnRLQx_VfKJqwcznG2w7aJm7CThab9bL7lfUWxN30aRRZuv7ok_IM7MijgN2-LEAGaCY1_A7YqpWzmwrzRZ26pu16Hd3uaAlU452ouvWwHNAlPHUwCYrYXzutnVnT8rV2DUUTb-Exgl7yfIfYRqojQwmbUXsg8GlOMLSm_SQcA8FE9l-naDv7OPU6CW3gZFLA7H7Dnx8-eJalxxqN-umBzYExo"/>
+</div>
+<p class="text-[9px] text-gray-500 font-medium uppercase">Clinique</p>
+<h3 class="font-display text-xs font-bold text-gray-900 dark:text-white truncate">チーク ポップ</h3>
+</div>
+<!-- Item 5: SR (Wide) -->
+<div class="col-span-2 glass-panel rounded-xl p-3 flex items-center gap-3 relative shadow-sm">
+<div class="absolute top-2 left-2 z-10">
+<span class="px-2 py-0.5 rounded bg-gradient-to-r from-purple-300 to-purple-400 text-[9px] font-bold text-purple-900 shadow-sm">SR</span>
+</div>
+<div class="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
+<img alt="Luxury perfume bottle" class="object-cover w-full h-full" data-alt="Luxury perfume bottle" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDPXCrIePXipj4dObE-b1_rskUYRmg2CXuNnFVjqr3AONOEFA_wo0X1h83jKhEYBJj9V7gxfxjKe-fs86vNDTqKJLTZJ_mG1O1agr791AYEfC308PVnVnB2zILQS_pAQGPemA8VkbOHev5OZLf3gNKZyFnkz6zIPLyu9g2_bUt2GVNLNU0WegRo0d_J-ZmM48vq2ZB7tU1pRuStOLRbo36_26J_-H1WuiJQcN7jcSQkiiAvLIKuJz0DmlFMNCWuy57TCV3fbxoLeOc"/>
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-[10px] text-gray-500 font-medium uppercase">Jo Malone</p>
+<h3 class="font-serif text-sm font-bold text-gray-900 dark:text-white truncate">イングリッシュ ペアー &amp; フリージア</h3>
+<div class="mt-1 flex items-center gap-2">
+<div class="h-1 w-24 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+<div class="h-full bg-primary/70 rounded-full w-[60%]"></div>
+</div>
+<span class="text-[9px] text-gray-500">60%</span>
+</div>
+</div>
+<button class="p-2 text-gray-400 hover:text-primary transition-colors">
+<span class="material-icons text-lg">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Bottom spacing for nav -->
+<div class="h-24"></div>
+</main>
+<!-- Floating Action Button (Add Item) -->
+<div class="fixed bottom-24 right-6 z-30">
+<button class="btn-squishy w-14 h-14 rounded-full bg-primary text-white flex items-center justify-center shadow-lg hover:shadow-primary/50 border-2 border-white/20">
+<span class="material-icons text-2xl">add</span>
+</button>
+</div>
+<!-- Glassmorphic Bottom Navigation -->
+<nav class="fixed bottom-6 left-6 right-6 z-40">
+<div class="glass-panel rounded-2xl h-16 flex items-center justify-around px-2 shadow-xl shadow-black/5 dark:shadow-black/20">
+<button class="flex flex-col items-center justify-center w-14 h-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+<span class="material-icons text-2xl">home</span>
+<span class="text-[9px] font-medium mt-0.5">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center w-14 h-full text-primary relative">
+<div class="absolute inset-0 bg-primary/10 rounded-xl m-1 transform scale-90"></div>
+<span class="material-icons text-2xl relative z-10">grid_view</span>
+<span class="text-[9px] font-bold mt-0.5 relative z-10">Vanity</span>
+</button>
+<!-- AI Mix Button (Center Highlight) -->
+<button class="flex flex-col items-center justify-center w-14 h-full group">
+<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center shadow-md group-active:scale-95 transition-transform">
+<span class="material-icons text-white text-xl">auto_awesome</span>
+</div>
+</button>
+<button class="flex flex-col items-center justify-center w-14 h-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+<span class="material-icons text-2xl">insights</span>
+<span class="text-[9px] font-medium mt-0.5">Stats</span>
+</button>
+<button class="flex flex-col items-center justify-center w-14 h-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+<span class="material-icons text-2xl">person</span>
+<span class="text-[9px] font-medium mt-0.5">Profile</span>
+</button>
+</div>
+</nav>
+</div>
+</body></html>

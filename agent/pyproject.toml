@@ -1,0 +1,28 @@
+[project]
+name = "alcheme-agent"
+version = "0.1.0"
+description = "alche:me AI Agent — Cosmetics Inventory & Makeup Recipe Generator"
+requires-python = ">=3.12"
+dependencies = [
+    "google-adk",
+    "google-cloud-firestore",
+    "google-cloud-storage",
+    "aiosqlite",
+    "pydantic>=2.0",
+    "requests",
+    "fastapi",
+    "uvicorn[standard]",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "pytest-mock",
+    "httpx",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

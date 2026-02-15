@@ -1,0 +1,199 @@
+@import "tailwindcss";
+
+@theme {
+  /* shadcn/ui CSS variables */
+  --color-background: hsl(0 0% 98%);
+  --color-foreground: hsl(240 6% 10%);
+  --color-card: hsl(0 0% 100%);
+  --color-card-foreground: hsl(240 6% 10%);
+  --color-popover: hsl(0 0% 100%);
+  --color-popover-foreground: hsl(240 6% 10%);
+  --color-primary: hsl(263 70% 50%);
+  --color-primary-foreground: hsl(0 0% 100%);
+  --color-secondary: hsl(0 0% 94%);
+  --color-secondary-foreground: hsl(240 6% 10%);
+  --color-muted: hsl(0 0% 94%);
+  --color-muted-foreground: hsl(0 0% 56%);
+  --color-accent: hsl(40 45% 55%);
+  --color-accent-foreground: hsl(0 0% 100%);
+  --color-destructive: hsl(0 52% 65%);
+  --color-destructive-foreground: hsl(0 0% 100%);
+  --color-border: hsl(0 0% 90%);
+  --color-input: hsl(0 0% 90%);
+  --color-ring: hsl(263 70% 50%);
+  --radius: 0.75rem;
+
+  /* Luminous Theme */
+  --color-lum-base: #FAFAFA;
+  --color-lum-surface: #FFFFFF;
+
+  /* Alchemy Accents */
+  --color-alchemy-gold: #C8A359;
+  --color-alchemy-gold-light: #FCEEB5;
+  --color-magic-pink: #FFB7C5;
+  --color-magic-purple: #E0BBE4;
+  --color-neon-accent: #7C3AED;
+
+  /* Text (Ink) */
+  --color-text-ink: #1A1A1D;
+  --color-text-muted: #8E8E93;
+
+  /* Rarity */
+  --color-rarity-ssr: #F59E0B;
+  --color-rarity-sr: #A855F7;
+  --color-rarity-r: #3B82F6;
+
+  /* Legacy compat (remapped to new palette) */
+  --color-alcheme-gold: #C8A359;
+  --color-alcheme-rose: #7C3AED;
+  --color-alcheme-blush: #E0BBE4;
+  --color-alcheme-cream: #FAFAFA;
+  --color-alcheme-sand: #F0F0F0;
+  --color-alcheme-charcoal: #1A1A1D;
+  --color-alcheme-muted: #8E8E93;
+  --color-alcheme-success: #7EB8A0;
+  --color-alcheme-warning: #E8B85E;
+  --color-alcheme-danger: #D97070;
+  --color-alcheme-ssr: #F59E0B;
+  --color-alcheme-sr: #A855F7;
+  --color-alcheme-r: #3B82F6;
+  --color-alcheme-n: #9CA3AF;
+
+  /* Custom shadows */
+  --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.03);
+  --shadow-card-hover: 0 8px 24px rgba(0, 0, 0, 0.06);
+  --shadow-soft-float: 0 10px 40px -10px rgba(200, 163, 89, 0.2);
+  --shadow-neon-glow: 0 0 20px rgba(124, 58, 237, 0.3);
+  --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+  --shadow-glow: 0 0 20px rgba(200, 163, 89, 0.25);
+
+  /* Fonts */
+  --font-sans: 'Inter', 'Zen Maru Gothic', sans-serif;
+  --font-display: 'Cormorant Garamond', serif;
+  --font-body: 'Zen Maru Gothic', sans-serif;
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 98%;
+    --foreground: 240 6% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 6% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 6% 10%;
+    --primary: 263 70% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 94%;
+    --secondary-foreground: 240 6% 10%;
+    --muted: 0 0% 94%;
+    --muted-foreground: 0 0% 56%;
+    --accent: 40 45% 55%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 52% 65%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 263 70% 50%;
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+  body {
+    background-color: #FAFAFA;
+    color: #1A1A1D;
+    font-family: 'Zen Maru Gothic', 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* ── Glassmorphism ── */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+/* ── Aurora Blob Background ── */
+.aurora-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  background: #FAFAFA;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.blob {
+  position: absolute;
+  filter: blur(80px);
+  opacity: 0.5;
+}
+
+.blob-1 { top: -10%; left: -10%; width: 400px; height: 400px; background: #E0BBE4; }
+.blob-2 { top: 40%; right: -20%; width: 350px; height: 350px; background: #FFB7C5; }
+.blob-3 { bottom: -10%; left: 20%; width: 500px; height: 500px; background: #FCEEB5; }
+
+/* ── Squishy Buttons ── */
+.btn-squishy {
+  transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.btn-squishy:active {
+  transform: scale(0.95);
+}
+
+/* ── Utilities ── */
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom, 24px); }
+
+/* ── Shared Button Utilities ── */
+.btn-primary {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  box-shadow: 0 0 20px rgba(124, 58, 237, 0.3);
+}
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right, #7C3AED, #a855f7, #7C3AED);
+  opacity: 0.9;
+}
+.btn-primary:hover::before { opacity: 1; }
+.btn-primary > * { position: relative; z-index: 1; }
+
+.btn-gold {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  box-shadow: 0 0 20px rgba(200, 163, 89, 0.3);
+}
+.btn-gold::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right, #C8A359, #dab76e, #C8A359);
+  opacity: 0.9;
+}
+.btn-gold:hover::before { opacity: 1; }
+.btn-gold > * { position: relative; z-index: 1; }

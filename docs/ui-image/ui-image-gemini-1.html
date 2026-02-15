@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>alche:me - Cosme Mixologist</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Zen+Maru+Gothic:wght@500;700;900&family=Cormorant+Garamond:ital,wght@1,600;1,700&display=swap" rel="stylesheet">
+
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        // Luminous Theme (Off-White bases)
+                        'lum-base': '#FAFAFA', // Pure white回避
+                        'lum-surface': '#FFFFFF',
+                        
+                        // Alchemy Accents (Cyberpunk x Luxury)
+                        'alchemy-gold': '#C8A359',
+                        'alchemy-gold-light': '#FCEEB5',
+                        'magic-pink': '#FFB7C5',
+                        'magic-purple': '#E0BBE4',
+                        'neon-accent': '#7C3AED', // Electric Purple for Primary Actions
+                        
+                        // Text (Ink colors, not pure black)
+                        'text-ink': '#1A1A1D', 
+                        'text-muted': '#8E8E93',
+                        
+                        // Rarity Colors
+                        'rarity-ssr': '#F59E0B', // Gold
+                        'rarity-sr': '#A855F7',  // Purple
+                        'rarity-r': '#3B82F6',   // Blue
+                    },
+                    fontFamily: {
+                        display: ['"Cormorant Garamond"', 'serif'], // 見出し用
+                        body: ['"Zen Maru Gothic"', 'sans-serif'],  // 本文用
+                        sans: ['"Inter"', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'soft-float': '0 10px 40px -10px rgba(200, 163, 89, 0.2)',
+                        'neon-glow': '0 0 20px rgba(124, 58, 237, 0.3)', // 発光表現
+                        'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
+                    },
+                    animation: {
+                        'aurora': 'aurora 20s ease infinite',
+                        'float-slow': 'float 6s ease-in-out infinite',
+                        'pulse-glow': 'pulse-glow 3s infinite',
+                        'blob': 'blob 7s infinite',
+                    },
+                    keyframes: {
+                        aurora: {
+                            '0%, 100%': { backgroundPosition: '0% 50%' },
+                            '50%': { backgroundPosition: '100% 50%' },
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-8px)' },
+                        },
+                        blob: {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #FAFAFA;
+            color: #1A1A1D;
+            font-family: 'Zen Maru Gothic', sans-serif;
+            overflow: hidden; /* App-like feel */
+        }
+
+        /* 3.2 Glassmorphism 3.0: Liquid & Morphing Background */
+        .aurora-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            background: #FAFAFA;
+            overflow: hidden;
+        }
+        .blob {
+            position: absolute;
+            filter: blur(80px);
+            opacity: 0.6;
+            animation: blob 10s infinite cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .blob-1 { top: -10%; left: -10%; width: 500px; height: 500px; background: #E0BBE4; animation-delay: 0s; }
+        .blob-2 { top: 40%; right: -20%; width: 400px; height: 400px; background: #FFB7C5; animation-delay: 2s; }
+        .blob-3 { bottom: -10%; left: 20%; width: 600px; height: 600px; background: #FCEEB5; animation-delay: 4s; }
+
+        /* Glassmorphism Stack */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(24px) saturate(180%); /* Saturation Boost */
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+        }
+
+        /* 3.1 Tactile Maximalism (Squishy UI) */
+        .btn-squishy {
+            transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        .btn-squishy:active {
+            transform: scale(0.95);
+        }
+
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 24px); }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- Helper Components ---
+
+        const Icon = ({ name, size = 20, className = "", strokeWidth = 2 }) => {
+            const iconRef = useRef(null);
+            useEffect(() => {
+                if (iconRef.current) {
+                    lucide.createIcons({
+                        icons: { [name]: lucide.icons[name] },
+                        nameAttr: 'data-lucide',
+                        attrs: { class: className, width: size, height: size, "stroke-width": strokeWidth }
+                    });
+                }
+            }, [name, size, className, strokeWidth]);
+            return <i ref={iconRef} data-lucide={name} className={className}></i>;
+        };
+
+        // 2.1.1 "3x Visual Weight" Primary Button
+        const PrimaryButton = ({ children, onClick, className = "", icon }) => (
+            <button 
+                onClick={onClick}
+                className={`btn-squishy w-full h-[56px] rounded-2xl relative overflow-hidden shadow-neon-glow group ${className}`}
+            >
+                {/* 3.5 Cyberpunk Gradient */}
+                <div className="absolute inset-0 bg-gradient-to-r from-neon-accent via-purple-500 to-neon-accent opacity-90 group-hover:opacity-100 transition-opacity"></div>
+                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/noise.png')] opacity-20"></div>
+                <div className="relative z-10 flex items-center justify-center gap-2 text-white font-body font-bold tracking-wider text-lg">
+                    {icon && <Icon name={icon} size={20} />}
+                    {children}
+                </div>
+            </button>
+        );
+
+        // --- Layout Components ---
+
+        const BottomNav = ({ activeTab, onTabChange }) => {
+            const tabs = [
+                { id: 'chat', label: 'Concierge', icon: 'Sparkles' },
+                { id: 'scan', label: 'Scan', icon: 'ScanFace' },
+                { id: 'inventory', label: 'Vanity', icon: 'LayoutGrid' }, 
+                { id: 'me', label: 'Me', icon: 'User' },
+            ];
+
+            return (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-6">
+                    <nav className="glass-panel rounded-full px-2 py-2 flex justify-between items-center shadow-2xl">
+                        {tabs.map((tab) => {
+                            const isActive = activeTab === tab.id;
+                            return (
+                                <button 
+                                    key={tab.id}
+                                    onClick={() => onTabChange(tab.id)}
+                                    className={`relative flex flex-col items-center justify-center w-14 h-14 rounded-full transition-all duration-300 btn-squishy ${isActive ? "bg-white shadow-md text-neon-accent" : "text-text-muted hover:text-text-ink"}`}
+                                >
+                                    <Icon name={tab.icon} size={24} strokeWidth={isActive ? 2.5 : 2} />
+                                    {isActive && <div className="absolute -bottom-1 w-1 h-1 rounded-full bg-neon-accent"></div>}
+                                </button>
+                            );
+                        })}
+                    </nav>
+                </div>
+            );
+        };
+
+        // --- Screen: Concierge (Chat) ---
+        // 4.1 Agentic UX: Thinking Process & Recipe Card
+        const ChatScreen = () => {
+            const [isThinking, setIsThinking] = useState(true);
+
+            return (
+                <div className="flex flex-col h-full relative z-10 pb-32">
+                    {/* Header */}
+                    <header className="fixed top-0 w-full glass-panel border-b-0 z-20 px-6 py-4 flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-neon-accent to-magic-pink flex items-center justify-center text-white font-display italic font-bold text-xl shadow-lg">
+                                A
+                            </div>
+                            <div>
+                                <h1 className="font-display font-bold text-2xl text-text-ink leading-none">alche:me</h1>
+                                <p className="text-[10px] text-text-muted font-bold tracking-widest uppercase mt-0.5">Cosme Mixologist</p>
+                            </div>
+                        </div>
+                        <button className="w-10 h-10 rounded-full bg-white/50 flex items-center justify-center hover:bg-white transition text-text-ink">
+                            <Icon name="History" size={20} />
+                        </button>
+                    </header>
+
+                    {/* Chat Content */}
+                    <div className="flex-1 overflow-y-auto px-4 pt-28 space-y-6 hide-scrollbar">
+                        
+                        {/* User Message */}
+                        <div className="flex justify-end">
+                            <div className="glass-card bg-white/80 border-none text-text-ink px-5 py-4 rounded-[20px] rounded-tr-sm max-w-[85%] text-sm leading-relaxed shadow-sm">
+                                <p>明日は雨だけど、TWICEみたいな<span className="font-bold text-neon-accent">「純欲メイク」</span>がしたい！でも韓国コスメは持ってないの😭</p>
+                            </div>
+                        </div>
+
+                        {/* Agent Thinking (Chain-of-Thought) */}
+                        {isThinking && (
+                            <div className="w-full max-w-[85%]">
+                                <div className="glass-card rounded-2xl p-4 border-l-4 border-l-neon-accent bg-white/40 mb-2">
+                                    <div className="flex items-center gap-2 text-xs font-bold text-neon-accent mb-3 uppercase tracking-wider">
+                                        <Icon name="BrainCircuit" size={14} className="animate-pulse" />
+                                        Alchemist Reasoning...
+                                    </div>
+                                    <div className="space-y-3 pl-2 border-l border-neon-accent/20">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-neon-accent animate-ping"></div>
+                                            <p className="text-[11px] text-text-ink">純欲メイクの成分分解: <span className="font-bold">「ツヤ肌」「血色感」</span></p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-gray-300"></div>
+                                            <p className="text-[11px] text-text-muted">在庫検索: ピンクのラメシャドウ... <span className="text-red-500 font-bold">MISSING</span></p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-alchemy-gold"></div>
+                                            <p className="text-[11px] text-text-ink font-bold">✨ 代用案生成: CANMAKEチークを目元に転用</p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
+                                            <p className="text-[11px] text-text-muted">雨対策: 仕上げパウダー工程を追加</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Result: Recipe Card (Detailed) */}
+                        <div className="animate-float-slow">
+                            <div className="glass-card bg-white/70 rounded-[32px] overflow-hidden border border-white shadow-soft-float">
+                                {/* Card Header (Image) */}
+                                <div className="relative h-48 bg-gray-200">
+                                    <img src="/api/placeholder/400/320?text=Pure+Desire+Makeup" className="w-full h-full object-cover" />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                                    <div className="absolute bottom-4 left-5 text-white">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <span className="bg-neon-accent/80 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-bold border border-white/20">MATCH 94%</span>
+                                            <span className="bg-blue-500/80 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-bold border border-white/20">雨の日仕様</span>
+                                        </div>
+                                        <h3 className="font-display font-bold text-2xl drop-shadow-md">雨の日専用・純欲メイク</h3>
+                                    </div>
+                                </div>
+
+                                {/* Content */}
+                                <div className="p-6">
+                                    <div className="flex items-start gap-4 mb-6">
+                                        <div className="w-10 h-10 flex-shrink-0 rounded-full bg-magic-pink/30 flex items-center justify-center text-xl">🪄</div>
+                                        <div>
+                                            <p className="text-sm text-text-ink font-medium leading-relaxed">
+                                                買わなくてOKです！<br/>
+                                                手持ちの<span className="font-bold border-b-2 border-magic-pink">CANMAKEチーク</span>を目元に使い、上からハイライトを重ねることで、TWICE風の「濡れツヤ感」を再現しました。
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Steps */}
+                                    <div className="space-y-4 mb-6">
+                                        <div className="flex items-center gap-3 p-3 rounded-xl bg-white/50 border border-white">
+                                            <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-xs font-bold text-text-muted border border-gray-200">
+                                                Eye
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-xs text-text-muted font-bold">STEP 1</p>
+                                                <p className="text-sm font-bold text-text-ink">CANMAKE クリームチーク 16</p>
+                                            </div>
+                                            <span className="text-xs text-neon-accent font-bold px-2 py-1 bg-neon-accent/10 rounded-md">代用</span>
+                                        </div>
+                                        <div className="flex items-center gap-3 p-3 rounded-xl bg-white/50 border border-white">
+                                            <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-xs font-bold text-text-muted border border-gray-200">
+                                                Top
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-xs text-text-muted font-bold">STEP 2</p>
+                                                <p className="text-sm font-bold text-text-ink">CEZANNE ハイライト 01</p>
+                                            </div>
+                                            <span className="text-xs text-text-muted px-2">黒目上に</span>
+                                        </div>
+                                    </div>
+
+                                    <PrimaryButton icon="Play">メイクを開始する (15分)</PrimaryButton>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Input Area */}
+                    <div className="fixed bottom-24 left-4 right-4 z-40">
+                        <div className="glass-panel rounded-full p-2 pl-5 flex items-center gap-3 shadow-xl ring-1 ring-white/50">
+                            <input 
+                                type="text" 
+                                placeholder="今日はどんな気分？" 
+                                className="flex-1 bg-transparent border-none focus:ring-0 text-text-ink placeholder-text-muted text-base font-body font-medium"
+                            />
+                            <button className="w-11 h-11 rounded-full bg-text-ink text-white flex items-center justify-center shadow-md btn-squishy">
+                                <Icon name="ArrowUp" size={22} />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- Screen: Inventory (Vanity) ---
+        // 3.3 Bento Grids 2.0 & Gamification
+        const InventoryScreen = () => {
+            const items = [
+                { id: 1, brand: "KATE", name: "Lip Monster 03", rarity: "SSR", remaining: 80, col: "col-span-2 row-span-1", img: "bg-red-100", type: "Lip" },
+                { id: 2, brand: "CANMAKE", name: "Cream Cheek", rarity: "SR", remaining: 60, col: "col-span-1 row-span-2", img: "bg-pink-100", type: "Cheek" },
+                { id: 3, brand: "DIOR", name: "Maximizer", rarity: "SSR", remaining: 15, col: "col-span-1", img: "bg-blue-50", type: "Lip" },
+                { id: 4, brand: "EXCEL", name: "Skinny Rich", rarity: "R", remaining: 40, col: "col-span-1", img: "bg-yellow-100", type: "Eye" },
+                { id: 5, brand: "ROM&ND", name: "Juicy Tint", rarity: "SR", remaining: 90, col: "col-span-2", img: "bg-rose-100", type: "Lip" },
+            ];
+
+            return (
+                <div className="min-h-full pb-32 relative z-10">
+                    {/* Header */}
+                    <div className="pt-16 px-6 pb-6 sticky top-0 bg-lum-base/90 backdrop-blur-lg z-20 border-b border-white/50">
+                        <div className="flex justify-between items-end mb-4">
+                            <div>
+                                <h1 className="font-display italic font-bold text-5xl text-text-ink">Vanity</h1>
+                                <p className="text-xs text-text-muted mt-2 tracking-widest font-bold uppercase">12 Items Collected • Total Value ¥32,400</p>
+                            </div>
+                            <button className="w-12 h-12 rounded-full bg-neon-accent text-white flex items-center justify-center shadow-lg btn-squishy">
+                                <Icon name="Plus" />
+                            </button>
+                        </div>
+                        {/* Tags */}
+                        <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
+                            {['All', 'Lip', 'Eye', 'Cheek', 'Base'].map((cat, i) => (
+                                <button key={cat} className={`px-5 py-2 rounded-full text-xs font-bold transition-all border ${i===0 ? 'bg-text-ink text-white border-text-ink' : 'bg-white text-text-muted border-gray-200 hover:border-neon-accent'}`}>
+                                    {cat}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Bento Grid */}
+                    <div className="px-4 grid grid-cols-2 gap-3 pb-safe">
+                        {items.map((item) => (
+                            <div key={item.id} className={`
+                                ${item.col} glass-card bg-white rounded-[24px] p-3 relative overflow-hidden group btn-squishy cursor-pointer
+                                ${item.rarity === 'SSR' ? 'border-amber-200 ring-2 ring-amber-100' : 'border-white'}
+                            `}>
+                                {/* Rarity Tag */}
+                                <div className={`absolute top-3 left-3 z-10 px-2.5 py-1 rounded-full text-[9px] font-black border backdrop-blur-md shadow-sm
+                                    ${item.rarity === 'SSR' ? 'bg-amber-400 text-white border-amber-300' : 
+                                      item.rarity === 'SR' ? 'bg-purple-400 text-white border-purple-300' : 'bg-gray-100 text-text-muted border-white'}
+                                `}>
+                                    {item.rarity}
+                                </div>
+
+                                {/* Content Layout */}
+                                <div className="h-full flex flex-col justify-between relative z-0">
+                                    <div className={`w-full ${item.col.includes('row-span-2') ? 'h-32' : 'h-24'} ${item.img} rounded-2xl mb-3 flex items-center justify-center relative overflow-hidden`}>
+                                        <Icon name="Image" className="text-black/10" size={32} />
+                                        {/* Gloss Effect */}
+                                        <div className="absolute inset-0 bg-gradient-to-tr from-white/40 to-transparent"></div>
+                                    </div>
+
+                                    <div className="px-1">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <p className="text-[10px] text-text-muted font-bold uppercase tracking-wider">{item.brand}</p>
+                                            {/* Nested Radius Formula Visualization :) */}
+                                            {item.remaining < 20 && <Icon name="AlertCircle" size={12} className="text-red-500" />}
+                                        </div>
+                                        <h3 className="text-sm font-bold text-text-ink leading-tight mb-2">{item.name}</h3>
+                                        
+                                        {/* Remaining Bar */}
+                                        <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
+                                            <div 
+                                                className={`h-full rounded-full ${item.remaining < 20 ? 'bg-red-400' : 'bg-green-400'}`} 
+                                                style={{ width: `${item.remaining}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        // --- Main App Shell ---
+        const App = () => {
+            const [activeTab, setActiveTab] = useState('chat');
+
+            return (
+                <div className="h-screen w-full relative">
+                    {/* Animated Liquid Background */}
+                    <div className="aurora-container">
+                        <div className="blob blob-1"></div>
+                        <div className="blob blob-2"></div>
+                        <div className="blob blob-3"></div>
+                        {/* Noise Overlay for Texture */}
+                        <div className="absolute inset-0 opacity-[0.03] bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]"></div>
+                    </div>
+
+                    {/* Screens */}
+                    <div className="absolute inset-0 overflow-hidden">
+                        {activeTab === 'chat' && <ChatScreen />}
+                        {activeTab === 'inventory' && <InventoryScreen />}
+                        {/* Scan & Me screens can be added similarly */}
+                        {(activeTab === 'scan' || activeTab === 'me') && (
+                            <div className="flex items-center justify-center h-full text-text-muted font-display text-xl italic">
+                                Work in Progress...
+                            </div>
+                        )}
+                    </div>
+
+                    <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

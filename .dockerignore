@@ -1,0 +1,13 @@
+node_modules
+.next
+.git
+.gitignore
+.env.local
+.env*.local
+npm-debug.log*
+*.pem
+.DS_Store
+agent/
+__tests__/
+docs/
+.claude/

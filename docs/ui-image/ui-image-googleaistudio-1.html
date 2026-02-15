@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+
+<html lang="ja"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Concierge Chat AI Alchemist</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=Playfair+Display:ital,wght@0,600;0,700;1,600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Lucide Icons as SVG strings are generally safer for single file requirement, but will use CDN for lucide-icons if needed or SVG inline for specificity -->
+<script src="https://unpkg.com/lucide@latest"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#7c3bed",
+                        "primary-light": "#a77bf3",
+                        "primary-dark": "#5b2aa1",
+                        "background-light": "#f7f6f8",
+                        "background-dark": "#171121",
+                        "aurora-pink": "#ffd1dc",
+                        "aurora-gold": "#ffe4b5",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "serif": ["Playfair Display", "serif"],
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "2xl": "2rem", "full": "9999px"},
+                    animation: {
+                        'blob': 'blob 7s infinite',
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        blob: {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
+                        }
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom styles for glassmorphism and specialized elements */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+        }
+        
+        .glass-card-accent {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.4) 100%);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 8px 32px 0 rgba(124, 59, 237, 0.15);
+        }
+
+        .aurora-bg {
+            background: radial-gradient(circle at 50% 10%, #fff0f5 0%, transparent 100%),
+                        radial-gradient(circle at 0% 30%, #ffd1dc 0%, transparent 50%),
+                        radial-gradient(circle at 100% 70%, #d8b4fe 0%, transparent 50%),
+                        radial-gradient(circle at 40% 80%, #ffe4b5 0%, transparent 40%),
+                        linear-gradient(to bottom, #f3e8ff, #ffffff);
+            background-size: 200% 200%;
+        }
+
+        /* Hide scrollbar for clean mobile look */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Squishy interaction simulation */
+        .active-squish:active {
+            transform: scale(0.95);
+            transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-display text-slate-800 antialiased h-screen overflow-hidden aurora-bg relative">
+<!-- Ambient Background Blobs -->
+<div class="fixed inset-0 overflow-hidden pointer-events-none z-0">
+<div class="absolute top-0 -left-4 w-72 h-72 bg-primary/20 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob"></div>
+<div class="absolute top-0 -right-4 w-72 h-72 bg-aurora-pink/60 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-2000"></div>
+<div class="absolute -bottom-8 left-20 w-72 h-72 bg-aurora-gold/50 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-4000"></div>
+</div>
+<!-- Main Container -->
+<div class="relative z-10 flex flex-col h-full max-w-md mx-auto bg-white/10 shadow-2xl overflow-hidden">
+<!-- Header -->
+<header class="glass-panel sticky top-0 z-20 px-6 py-4 flex justify-between items-center rounded-b-2xl">
+<div class="flex items-center space-x-3">
+<div class="w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-pink-400 p-[2px] shadow-lg">
+<div class="w-full h-full bg-white rounded-full flex items-center justify-center">
+<i class="w-5 h-5 text-primary" data-lucide="sparkles"></i>
+</div>
+</div>
+<div>
+<h1 class="text-sm font-semibold tracking-wide text-slate-900">コンシェルジュ</h1>
+<p class="text-[10px] font-medium text-primary uppercase tracking-widest">The Alchemist</p>
+</div>
+</div>
+<button class="active-squish p-2 rounded-full hover:bg-white/40 transition-colors">
+<i class="w-6 h-6 text-slate-600" data-lucide="more-vertical"></i>
+</button>
+</header>
+<!-- Chat Area -->
+<main class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-6 pb-24">
+<!-- Date Separator -->
+<div class="text-center">
+<span class="px-3 py-1 bg-white/30 backdrop-blur-sm rounded-full text-[10px] text-slate-500 font-medium border border-white/40">今日 14:02</span>
+</div>
+<!-- AI Welcome Message -->
+<div class="flex items-start space-x-3 animate-fade-in-up">
+<div class="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-primary/80 to-purple-600 flex items-center justify-center shadow-md">
+<span class="text-white text-xs font-bold">AI</span>
+</div>
+<div class="glass-panel p-4 rounded-2xl rounded-tl-none max-w-[85%] shadow-sm text-sm leading-relaxed text-slate-700">
+<p>こんにちは！Cosme Mixologistへようこそ。✨<br/>今日はどのようなメイクの提案をお探しですか？</p>
+</div>
+</div>
+<!-- User Message -->
+<div class="flex flex-row-reverse items-end space-x-reverse space-x-3">
+<div class="flex-shrink-0 w-8 h-8 rounded-full overflow-hidden border-2 border-white shadow-sm">
+<img alt="User profile photo" class="w-full h-full object-cover" data-alt="User profile portrait" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCEaGna32XfWRccigFzaGmokdqPa89BqsjcR7dLSA_aTx0HpfJw9A7iU6AH5P6QOo4PVRBFeZy4vospnHKn9f4-ZwjNKAOM5fiDODgFpPW7p7FvKK71FPzBAIP0FjnqXlpxBpJ22fN7kgxnfrZqiEZFs8FaWcJeQ7vsn4yrMjeJJv7j-mF7P_nLYw5bXPyJo0E0OjE7Dzy8PDV299WPmT0_ufN_wq9Zx_dk_sezzYjw75MHMrEBOoYGWgpHepDOesyXna7uFa2YT98"/>
+</div>
+<div class="bg-primary text-white p-4 rounded-2xl rounded-tr-none max-w-[85%] shadow-lg shadow-primary/20 text-sm">
+<p>雨の日のデート用に、K-POP風のメイクを提案して。</p>
+</div>
+</div>
+<!-- AI Thinking Process Accordion -->
+<div class="flex items-start space-x-3">
+<div class="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-primary/80 to-purple-600 flex items-center justify-center shadow-md animate-pulse-slow">
+<i class="w-4 h-4 text-white" data-lucide="sparkles"></i>
+</div>
+<div class="w-full max-w-[85%] space-y-2">
+<!-- Collapsible Thinking State -->
+<div class="glass-panel rounded-xl overflow-hidden transition-all duration-300">
+<details class="group" open="">
+<summary class="list-none flex justify-between items-center p-3 cursor-pointer select-none bg-white/20 hover:bg-white/30">
+<div class="flex items-center space-x-2">
+<div class="w-2 h-2 rounded-full bg-primary animate-ping"></div>
+<span class="text-xs font-medium text-slate-600">思考プロセス</span>
+</div>
+<i class="w-4 h-4 text-slate-500 transform group-open:rotate-180 transition-transform" data-lucide="chevron-down"></i>
+</summary>
+<div class="p-3 pt-0 border-t border-white/20 space-y-2 bg-white/10">
+<div class="flex items-center space-x-2 text-xs text-slate-500 py-1">
+<i class="w-3 h-3 text-blue-400" data-lucide="cloud-rain"></i>
+<span>天気を分析中... (湿度 85%, 雨)</span>
+</div>
+<div class="flex items-center space-x-2 text-xs text-slate-500 py-1">
+<i class="w-3 h-3 text-purple-400" data-lucide="database"></i>
+<span>在庫を検索中... (リップティント, クッションファンデ)</span>
+</div>
+<div class="flex items-center space-x-2 text-xs text-slate-500 py-1">
+<i class="w-3 h-3 text-green-500" data-lucide="check-circle-2"></i>
+<span>レシピ生成完了</span>
+</div>
+</div>
+</details>
+</div>
+<!-- Result Card -->
+<div class="glass-card-accent rounded-2xl p-0 overflow-hidden shadow-xl ring-1 ring-white/60 active-squish cursor-pointer transition-transform">
+<!-- Card Header Image -->
+<div class="h-32 w-full relative bg-slate-200">
+<img alt="Makeup products flatlay on pink background" class="w-full h-full object-cover" data-alt="K-Pop style makeup flatlay pink aesthetic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA-u4TwZvyhElxFIYCW2lQlyVXwzWGAh8AYaz3NXdS9_1MCQEYyI1kNBEuz70GCmKIRa8b6H598mobDDhtZX4Ov5Q2kAsO4_WZ7BmaBL43oGDmynDagsIYIVjzal-jn1P-7bEaS537MtPO2ybxRZxFMokPf-2ZYj7uLXdJJqo7SOtWtXOD7FIiE6GJ0PRJKt36VRlVb7ZDiO5fg8Fj9RsDJSm_MVvm-sOqdj4ljQj0dJbdtd2kXM-xYHmmLPFjbypev9t6Nv4iXaEM"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+<div class="absolute bottom-3 left-4 text-white">
+<span class="bg-primary/90 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider mb-1 inline-block backdrop-blur-sm border border-white/20">Recommended</span>
+<h3 class="font-serif text-xl italic font-semibold drop-shadow-md">Rainy Day Idol Look</h3>
+</div>
+<div class="absolute top-3 right-3 bg-white/90 backdrop-blur-md rounded-full px-2 py-1 flex items-center space-x-1 shadow-lg">
+<i class="w-3 h-3 text-primary" data-lucide="percent"></i>
+<span class="text-sm font-bold text-slate-900">98% Match</span>
+</div>
+</div>
+<!-- Card Body -->
+<div class="p-5 space-y-4">
+<div class="space-y-1">
+<h4 class="text-lg font-bold text-slate-800">雨の日のK-POPアイドルルック</h4>
+<p class="text-xs text-slate-500 leading-relaxed">
+                                    湿気に強いベースと、目元を強調したキラキラメイク。崩れにくいのに透明感のある仕上がりになります。
+                                </p>
+</div>
+<!-- Products List -->
+<div class="space-y-3">
+<div class="text-[10px] uppercase text-slate-400 font-bold tracking-wider">使用アイテム (Inventory)</div>
+<div class="flex items-center space-x-3 bg-white/40 p-2 rounded-lg border border-white/50">
+<div class="w-10 h-10 rounded-md bg-slate-100 flex-shrink-0 overflow-hidden">
+<img alt="Pink lip tint bottle" class="w-full h-full object-cover" data-alt="Pink cosmetic bottle" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAUy5G5BW7SheTdIb1HNy4ZnFMLf3SXjjklsoevbnO4FGTavKR9kod3991hw_QX-RW9-zj4i3DvfzcylbF0Tl_GIvPTdQJQnTZDuSGDqaF3vb33X_RkaRPR03jFd8x_Q1JT2Nk-qHBvIH15UnSpXt15GBU0G3DrS0f3-yKh9tgqx0NCTsG_UKgXo24Mkr1TwoRdEVHcexjDh2RRkvSa3--A1u_SzBYPhRf0p0lvk9UhDvA-esXj6PTS1FWqgMvUZDI68fqLuyK_tyg"/>
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-sm font-medium text-slate-800 truncate">Rom&amp;nd Juicy Lasting Tint</p>
+<p class="text-[10px] text-slate-500">#06 Figfig</p>
+</div>
+<div class="w-2 h-2 rounded-full bg-green-400"></div>
+</div>
+<div class="flex items-center space-x-3 bg-white/40 p-2 rounded-lg border border-white/50">
+<div class="w-10 h-10 rounded-md bg-slate-100 flex-shrink-0 overflow-hidden">
+<img alt="Face powder compact" class="w-full h-full object-cover" data-alt="Compact powder cosmetic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBzmBn3pf-aHi6Nq-yGPa87O-NBnMLsuo50Ko1-TZdFKLvIm4irkLgpCqI-Y8St9fuE596MfYawl3YMQo1jNFgRLSK9_AQHLQQWRhiC4kx-wjK_Kwl1RTrf-JA68AN82_Qwx_6cvVdH8Rf7EIy1vh2oXkXKgCf3AHoOiwdwUJC4I3j0RBhXDcbBmUW1KZSDGS3vPPLvpd7Tdw_hJYwrucHelncbJ6iBxsYueEa9M_-6ZnU-eG4jAkFXytzIyQGFZHZwnWYNdcLGsa0"/>
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-sm font-medium text-slate-800 truncate">Innisfree No Sebum Powder</p>
+<p class="text-[10px] text-slate-500">Mineral</p>
+</div>
+<div class="w-2 h-2 rounded-full bg-green-400"></div>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="flex space-x-2 pt-1">
+<button class="flex-1 bg-primary text-white text-xs font-semibold py-2.5 rounded-lg shadow-lg shadow-primary/30 active-squish">
+                                    このレシピを使う
+                                </button>
+<button class="px-3 bg-white text-primary rounded-lg border border-primary/20 shadow-sm active-squish">
+<i class="w-4 h-4" data-lucide="bookmark"></i>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="h-4"></div> <!-- Spacer -->
+</main>
+<!-- Bottom Input Area -->
+<div class="glass-panel absolute bottom-0 w-full rounded-t-3xl border-t border-white/60 p-4 pb-8 z-30">
+<div class="flex items-end space-x-2">
+<button class="p-3 rounded-full bg-white/50 text-slate-500 hover:text-primary active-squish transition-colors">
+<i class="w-5 h-5" data-lucide="mic"></i>
+</button>
+<div class="flex-1 bg-white/70 backdrop-blur-md rounded-2xl border border-white/50 shadow-inner p-1 pl-4 flex items-center">
+<input class="w-full bg-transparent border-none text-sm text-slate-800 placeholder-slate-400 focus:ring-0 px-0 py-2" placeholder="メッセージを入力..." type="text"/>
+<button class="p-2 m-1 bg-gradient-to-r from-primary to-purple-500 rounded-xl text-white shadow-lg shadow-primary/30 active-squish flex items-center justify-center">
+<i class="w-4 h-4" data-lucide="sparkles"></i>
+</button>
+</div>
+</div>
+<!-- Bottom Navigation Mockup -->
+<div class="flex justify-around items-center pt-6 text-slate-400">
+<div class="flex flex-col items-center space-y-1 text-primary cursor-pointer">
+<i class="w-6 h-6" data-lucide="message-circle"></i>
+<span class="text-[10px] font-medium">Chat</span>
+</div>
+<div class="flex flex-col items-center space-y-1 hover:text-slate-600 transition-colors cursor-pointer">
+<i class="w-6 h-6" data-lucide="package"></i>
+<span class="text-[10px] font-medium">Inventory</span>
+</div>
+<div class="flex flex-col items-center space-y-1 hover:text-slate-600 transition-colors cursor-pointer">
+<i class="w-6 h-6" data-lucide="user"></i>
+<span class="text-[10px] font-medium">Profile</span>
+</div>
+</div>
+</div>
+</div>
+<script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+    </script>
+</body></html>
