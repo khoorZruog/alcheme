@@ -1299,7 +1299,10 @@ def _process_product_image(image_bytes: bytes) -> bytes:
 
     # Background removal (if rembg available)
     if rembg_remove is not None:
-        image_bytes = rembg_remove(image_bytes)
+        try:
+            image_bytes = rembg_remove(image_bytes)
+        except Exception as e:
+            logger.warning("rembg failed, skipping background removal: %s", e)
 
     # Open and normalize
     img = Image.open(BytesIO(image_bytes)).convert("RGBA")

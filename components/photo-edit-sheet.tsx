@@ -159,6 +159,7 @@ export function PhotoEditSheet({ imageUrl, open, onClose, onConfirm }: PhotoEdit
       <SheetContent
         side="bottom"
         className="rounded-t-card max-h-[92dvh] p-0 flex flex-col"
+        hideClose
       >
         {/* ── Top bar ── */}
         <div className="flex items-center justify-between px-4 pt-4 pb-2">
