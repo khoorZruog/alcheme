@@ -5,6 +5,7 @@ All tools that need user context receive it from tool_context.state["user:id"].
 """
 
 import json
+import re
 from typing import Any
 
 from google.adk.tools import ToolContext
@@ -55,6 +56,23 @@ def save_recipe(recipe_json: str, tool_context: ToolContext) -> dict:
         recipe.setdefault("is_favorite", False)
         recipe.setdefault("pro_tips", [])
         recipe.setdefault("thinking_process", [])
+
+        # --- Auto-populate theme fields from alchemist output ---
+        if "theme_title" not in recipe:
+            theme_raw = recipe.pop("theme", "")  # e.g. "大人っぽい × デート"
+            occasion_raw = recipe.get("occasion", "")
+
+            recipe["theme_title"] = recipe.get("recipe_name", "メイクレシピ")
+            recipe["theme_description"] = recipe.get("user_request", "")
+
+            keywords: list[str] = []
+            if theme_raw:
+                keywords.extend([k.strip() for k in re.split(r"[×・、,\s]+", str(theme_raw)) if k.strip()])
+            if occasion_raw and occasion_raw not in keywords:
+                keywords.append(str(occasion_raw))
+            recipe["style_keywords"] = keywords[:5]
+            recipe["theme_status"] = "liked"
+            recipe.setdefault("source", "ai")
 
         # Use snake_case timestamps to match BFF orderBy('created_at')
         recipe["created_at"] = firestore.SERVER_TIMESTAMP

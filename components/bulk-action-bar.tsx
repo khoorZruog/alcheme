@@ -1,39 +1,45 @@
 "use client";
 
-import { useState } from "react";
-import { Trash2, Percent, X } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { Trash2, Percent, X, CheckCheck, XCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
 interface BulkActionBarProps {
   selectedCount: number;
-  onDelete: () => Promise<void>;
-  onUpdateRemaining: (value: string) => Promise<void>;
+  totalCount: number;
   onCancel: () => void;
+  onSelectAll: () => void;
+  onDeselectAll: () => void;
+  /** Custom action buttons. When provided, replaces default inventory actions. */
+  children?: ReactNode;
+  /** Default inventory actions (used when children is not provided) */
+  onDelete?: () => Promise<void>;
+  onUpdateRemaining?: (value: string) => Promise<void>;
 }
 
 const REMAINING_OPTIONS = ["100%", "80%", "60%", "40%", "20%", "0%"];
 
-export function BulkActionBar({ selectedCount, onDelete, onUpdateRemaining, onCancel }: BulkActionBarProps) {
+export function BulkActionBar({ selectedCount, totalCount, onCancel, onSelectAll, onDeselectAll, children, onDelete, onUpdateRemaining }: BulkActionBarProps) {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [remainingOpen, setRemainingOpen] = useState(false);
   const [processing, setProcessing] = useState(false);
 
+  const allSelected = totalCount > 0 && selectedCount === totalCount;
+
   const handleDelete = async () => {
     setProcessing(true);
-    await onDelete();
+    await onDelete?.();
     setProcessing(false);
     setDeleteConfirmOpen(false);
   };
 
   const handleRemaining = async (value: string) => {
     setProcessing(true);
-    await onUpdateRemaining(value);
+    await onUpdateRemaining?.(value);
     setProcessing(false);
     setRemainingOpen(false);
   };
-
-  if (selectedCount === 0) return null;
 
   return (
     <>
@@ -42,21 +48,37 @@ export function BulkActionBar({ selectedCount, onDelete, onUpdateRemaining, onCa
           <span className="text-white text-sm font-bold ml-2 shrink-0">
             {selectedCount}件選択
           </span>
+          <button
+            onClick={allSelected ? onDeselectAll : onSelectAll}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/10 text-white/80 text-[11px] font-bold hover:bg-white/20 transition btn-squishy shrink-0"
+          >
+            {allSelected ? (
+              <><XCircle className="h-3 w-3" />解除</>
+            ) : (
+              <><CheckCheck className="h-3 w-3" />全選択</>
+            )}
+          </button>
           <div className="flex-1" />
-          <button
-            onClick={() => setRemainingOpen(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/10 text-white text-xs font-bold hover:bg-white/20 transition btn-squishy"
-          >
-            <Percent className="h-3.5 w-3.5" />
-            残量更新
-          </button>
-          <button
-            onClick={() => setDeleteConfirmOpen(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-500/80 text-white text-xs font-bold hover:bg-red-500 transition btn-squishy"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            削除
-          </button>
+          {children
+            ? children
+            : selectedCount > 0 && (
+              <>
+                <button
+                  onClick={() => setRemainingOpen(true)}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/10 text-white text-xs font-bold hover:bg-white/20 transition btn-squishy"
+                >
+                  <Percent className="h-3.5 w-3.5" />
+                  残量更新
+                </button>
+                <button
+                  onClick={() => setDeleteConfirmOpen(true)}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-500/80 text-white text-xs font-bold hover:bg-red-500 transition btn-squishy"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  削除
+                </button>
+              </>
+            )}
           <button onClick={onCancel} className="p-2 text-white/60 hover:text-white">
             <X className="h-4 w-4" />
           </button>

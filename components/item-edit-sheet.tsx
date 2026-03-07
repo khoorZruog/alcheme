@@ -9,6 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CATEGORY_GROUPS, getItemTypesForGroup, getPaoMonths } from "@/lib/cosme-constants";
 import type { InventoryItem, CosmeCategory, CosmeTexture, CosmeStats } from "@/types/inventory";
+import type { CatalogEntry } from "@/types/catalog";
+import { useCatalogMatch } from "@/hooks/use-catalog-match";
+import { CatalogMatchBanner } from "@/components/catalog-match-banner";
+import { useBrandSuggestions } from "@/hooks/use-brand-suggestions";
+import { useProductSuggestions } from "@/hooks/use-product-suggestions";
+import { AutocompleteInput } from "@/components/autocomplete-input";
+import { DuplicateWarning } from "@/components/duplicate-warning";
+import { useInventory } from "@/hooks/use-inventory";
 
 interface ItemEditSheetProps {
   item: InventoryItem | null;
@@ -103,6 +111,33 @@ export function ItemEditSheet({ item, open, onClose, onSave }: ItemEditSheetProp
   const itemTypes = getItemTypesForGroup(form.category);
   const paoMonths = getPaoMonths(form.item_type);
 
+  // Brand & product autocomplete
+  const { suggestions: brandSuggestions, isLoading: brandLoading } = useBrandSuggestions(form.brand);
+  const { suggestions: productSuggestions, isLoading: productLoading } = useProductSuggestions(form.product_name, form.brand);
+  const { items: inventoryItems } = useInventory();
+
+  // Catalog match — auto-check when brand/product_name change
+  const { match: catalogMatch, isChecking: catalogChecking } = useCatalogMatch(
+    form.brand,
+    form.product_name,
+    form.color_code,
+  );
+
+  const handleCatalogApply = (entry: CatalogEntry) => {
+    setForm((prev) => ({
+      ...prev,
+      category: entry.category ?? prev.category,
+      item_type: entry.item_type ?? prev.item_type,
+      color_code: entry.color_code ?? prev.color_code,
+      color_name: entry.color_name ?? prev.color_name,
+      color_description: entry.color_description ?? prev.color_description,
+      texture: (entry.texture ?? prev.texture) as CosmeTexture,
+    }));
+    if (entry.image_url && !imageUrl) {
+      setImageUrl(entry.image_url);
+    }
+  };
+
   const handleCategoryChange = (cat: CosmeCategory) => {
     const types = getItemTypesForGroup(cat);
     setForm({ ...form, category: cat, item_type: types[0] ?? "" });
@@ -136,6 +171,13 @@ export function ItemEditSheet({ item, open, onClose, onSave }: ItemEditSheetProp
         </SheetHeader>
 
         <div className="mt-4 space-y-4">
+          {/* Catalog match banner */}
+          <CatalogMatchBanner
+            match={catalogMatch}
+            isChecking={catalogChecking}
+            onApply={handleCatalogApply}
+          />
+
           {/* Image editor */}
           <div className="space-y-1.5">
             <Label className="text-alcheme-charcoal">画像</Label>
@@ -202,12 +244,28 @@ export function ItemEditSheet({ item, open, onClose, onSave }: ItemEditSheetProp
 
           <div className="space-y-1.5">
             <Label className="text-alcheme-charcoal">ブランド</Label>
-            <Input value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} className="rounded-input" />
+            <AutocompleteInput
+              value={form.brand}
+              onChange={(v) => setForm({ ...form, brand: v })}
+              suggestions={brandSuggestions}
+              isLoading={brandLoading}
+              placeholder="例: KATE, Dior"
+              className="rounded-input flex h-9 w-full border border-input bg-transparent px-3 py-1 text-base shadow-sm"
+              showSource
+            />
           </div>
 
           <div className="space-y-1.5">
             <Label className="text-alcheme-charcoal">商品名</Label>
-            <Input value={form.product_name} onChange={(e) => setForm({ ...form, product_name: e.target.value })} className="rounded-input" />
+            <AutocompleteInput
+              value={form.product_name}
+              onChange={(v) => setForm({ ...form, product_name: v })}
+              suggestions={productSuggestions}
+              isLoading={productLoading}
+              placeholder="例: リップモンスター"
+              className="rounded-input flex h-9 w-full border border-input bg-transparent px-3 py-1 text-base shadow-sm"
+              showSource
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -225,6 +283,14 @@ export function ItemEditSheet({ item, open, onClose, onSave }: ItemEditSheetProp
             <Label className="text-alcheme-charcoal">色の説明</Label>
             <Input value={form.color_description} onChange={(e) => setForm({ ...form, color_description: e.target.value })} className="rounded-input" />
           </div>
+
+          <DuplicateWarning
+            brand={form.brand}
+            productName={form.product_name}
+            colorCode={form.color_code}
+            items={inventoryItems}
+            editingId={item?.id}
+          />
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">

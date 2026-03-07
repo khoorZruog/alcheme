@@ -13,7 +13,7 @@ import { fetcher } from '@/lib/api/fetcher';
 import type { UserProfile } from '@/types/user';
 
 // Pages where BottomNav should be hidden
-const HIDE_NAV_PATTERNS = ['/scan/confirm', '/inventory/', '/profile'];
+const HIDE_NAV_PATTERNS = ['/scan/confirm', '/inventory/', '/profile/'];
 // Pages that manage their own full-height layout (no pb-28 needed)
 const NO_PADDING_PATTERNS = ['/chat'];
 
@@ -27,7 +27,7 @@ export default function MainLayout({
   const pathname = usePathname();
   const [sideMenuOpen, setSideMenuOpen] = useState(false);
   const { data: profileData } = useSWR<{ profile: UserProfile }>(
-    user ? '/api/users/me' : null,
+    !loading && user ? '/api/users/me' : null,
     fetcher
   );
 

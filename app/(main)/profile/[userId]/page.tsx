@@ -92,6 +92,7 @@ export default function UserProfilePage({
           photoUrl={photoUrl}
           displayName={displayName}
           stats={stats}
+          userId={userId}
         />
 
         <ProfileTags

@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
       MAX_LIMIT
     );
     const feedType = searchParams.get('feed_type') || 'all';
+    const userFilter = searchParams.get('user_filter');
 
     // Note: all posts are created with visibility='public' (no private posts mechanism),
     // so we skip the visibility filter to avoid requiring a composite Firestore index.
@@ -32,8 +33,13 @@ export async function GET(request: NextRequest) {
       .orderBy('created_at', 'desc')
       .limit(limitParam + 1); // +1 to check if there's a next page
 
+    // Single-user filter (used by profile page)
+    if (userFilter) {
+      query = query.where('user_id', '==', userFilter);
+    }
+
     // Following feed: filter by followed user IDs
-    if (feedType === 'following') {
+    if (!userFilter && feedType === 'following') {
       const followingSnap = await adminDb
         .collection('social')
         .doc('follows')

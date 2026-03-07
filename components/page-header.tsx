@@ -7,15 +7,18 @@ import { cn } from "@/lib/utils";
 interface PageHeaderProps {
   title: string;
   backHref?: string;
+  onBack?: () => void;
   rightElement?: React.ReactNode;
   className?: string;
 }
 
-export function PageHeader({ title, backHref, rightElement, className }: PageHeaderProps) {
+export function PageHeader({ title, backHref, onBack, rightElement, className }: PageHeaderProps) {
   const router = useRouter();
 
   const handleBack = () => {
-    if (backHref) {
+    if (onBack) {
+      onBack();
+    } else if (backHref) {
       router.push(backHref);
     } else {
       router.back();

@@ -18,6 +18,9 @@ export interface SettingsFormState {
   skinTone: string;
   personalColor: string;
   faceType: string;
+  hairStyle: string;
+  hairColor: string;
+  location: string;
   interests: string[];
   concerns: string[];
   agentTheme: UserProfile["agentTheme"];
@@ -32,6 +35,7 @@ export interface SettingsFormState {
   visSkinTone: boolean;
   visPersonalColor: boolean;
   visInterests: boolean;
+  manualSchedule: string;
 }
 
 const INITIAL: SettingsFormState = {
@@ -43,6 +47,9 @@ const INITIAL: SettingsFormState = {
   skinTone: "",
   personalColor: "",
   faceType: "",
+  hairStyle: "",
+  hairColor: "",
+  location: "",
   interests: [],
   concerns: [],
   agentTheme: "bestfriend",
@@ -57,6 +64,7 @@ const INITIAL: SettingsFormState = {
   visSkinTone: true,
   visPersonalColor: true,
   visInterests: true,
+  manualSchedule: "",
 };
 
 /** Convert legacy "yyyy/mm/dd" to native date input "yyyy-mm-dd" */
@@ -94,6 +102,9 @@ export function useSettingsForm() {
         skinTone: migrateSkinTone(p.skinTone),
         personalColor: p.personalColor ?? "",
         faceType: p.faceType ?? "",
+        hairStyle: p.hairType ?? "",
+        hairColor: p.hairColor ?? "",
+        location: p.location ?? "",
         interests: p.interests ?? [],
         concerns: p.concerns ?? [],
         agentTheme: p.agentTheme ?? "bestfriend",
@@ -108,6 +119,7 @@ export function useSettingsForm() {
         visSkinTone: vis.skinTone ?? true,
         visPersonalColor: vis.personalColor ?? true,
         visInterests: vis.interests ?? true,
+        manualSchedule: p.manualSchedule ?? "",
       });
     }
   }, [data]);
@@ -131,6 +143,9 @@ export function useSettingsForm() {
           skinTone: form.skinTone || null,
           personalColor: form.personalColor || null,
           faceType: form.faceType || null,
+          hairType: form.hairStyle || null,
+          hairColor: form.hairColor || null,
+          location: form.location || null,
           interests: form.interests,
           concerns: form.concerns,
           agentTheme: form.agentTheme,
@@ -149,6 +164,7 @@ export function useSettingsForm() {
             personalColor: form.visPersonalColor,
             interests: form.visInterests,
           },
+          manualSchedule: form.manualSchedule || null,
         }),
       });
       mutate();

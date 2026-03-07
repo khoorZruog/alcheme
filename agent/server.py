@@ -35,6 +35,11 @@ from alcheme.agent import root_agent
 from alcheme.agents.product_search import create_product_search_agent
 from alcheme.tools.rakuten_api import search_rakuten_for_candidates
 from alcheme.tools.simulator_tools import generate_preview_image
+from alcheme.tools.theme_tools import (
+    generate_theme_suggestions,
+    generate_theme_image,
+    update_theme_status,
+)
 
 # Firestore client for user profile lookups
 _firestore_db: firestore_lib.Client | None = None
@@ -60,11 +65,64 @@ def _build_user_state(user_id: str) -> dict:
                 state["user:skin_type"] = profile["skinType"]
             if profile.get("displayName"):
                 state["user:display_name"] = profile["displayName"]
+            if profile.get("location"):
+                state["user:location"] = profile["location"]
             if profile.get("beautyGoals"):
                 state["user:beauty_goals"] = profile["beautyGoals"]
+            if profile.get("preferences"):
+                state["user:profiler_preferences"] = profile["preferences"]
+            # Calendar integration
+            cal = profile.get("calendarIntegration")
+            if cal and cal.get("connected"):
+                state["user:calendar_connected"] = True
+            if profile.get("manualSchedule"):
+                state["user:manual_schedule"] = profile["manualSchedule"]
     except Exception as e:
         logger.warning("Failed to fetch user profile for %s: %s", user_id, e)
     return state
+
+
+def _fetch_selected_items_description(user_id: str, item_ids: list[str]) -> list[str]:
+    """Fetch inventory + product details for selected items, return human-readable lines."""
+    descriptions: list[str] = []
+    db = _get_firestore()
+    inv_ref = db.collection("users").document(user_id).collection("inventory")
+    prod_ref = db.collection("users").document(user_id).collection("products")
+
+    for item_id in item_ids[:5]:  # Cap at 5 items
+        try:
+            inv_doc = inv_ref.document(item_id).get()
+            if not inv_doc.exists:
+                continue
+            inv_data = inv_doc.to_dict() or {}
+            product_id = inv_data.get("product_id", "")
+
+            # Fetch product details
+            brand = ""
+            product_name = ""
+            color_name = ""
+            item_type = ""
+            if product_id:
+                prod_doc = prod_ref.document(product_id).get()
+                if prod_doc.exists:
+                    prod_data = prod_doc.to_dict() or {}
+                    brand = prod_data.get("brand", "")
+                    product_name = prod_data.get("product_name", "")
+                    color_name = prod_data.get("color_name", "")
+                    item_type = prod_data.get("item_type", "")
+
+            parts = [p for p in [brand, product_name] if p]
+            detail_parts = [p for p in [color_name, item_type] if p]
+            if parts:
+                line = " ".join(parts)
+                if detail_parts:
+                    line += f" ({', '.join(detail_parts)})"
+                descriptions.append(line)
+        except Exception as e:
+            logger.warning("Failed to fetch item %s for user %s: %s", item_id, user_id, e)
+
+    return descriptions
+
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -131,6 +189,10 @@ class ChatRequest(BaseModel):
     session_id: str | None = None
     image_base64: str | None = None
     image_mime_type: str | None = None
+    selected_item_ids: list[str] | None = None
+    match_mode: str | None = None
+    selected_brands: list[str] | None = None
+    theme_id: str | None = None
 
 
 class ProductSearchRequest(BaseModel):
@@ -149,6 +211,23 @@ class GenerateImageRequest(BaseModel):
     user_id: str
     steps: list[dict[str, Any]]
     theme: str = "cute"
+
+
+class SuggestThemesRequest(BaseModel):
+    user_id: str
+
+
+class GenerateThemeImageRequest(BaseModel):
+    theme_id: str
+    user_id: str
+    theme: dict[str, Any]
+
+
+class UpdateThemeStatusRequest(BaseModel):
+    theme_id: str
+    user_id: str
+    status: str  # "liked" | "skipped"
+    recipe_id: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -264,6 +343,142 @@ def _extract_recipe_id_from_event(event) -> str | None:
     return None
 
 
+# Tools whose function responses should be emitted as rich card SSE events
+_CARD_TOOLS: dict[str, str] = {
+    "analyze_product_compatibility": "product_card",
+    "compare_products_against_inventory": "product_card",
+    "get_substitution_technique": "technique_card",
+    "analyze_preference_history": "profiler_card",
+}
+
+
+def _extract_card_events_from_event(event) -> list[dict]:
+    """Extract tool function response results that should be emitted as rich card SSE events.
+
+    Returns a list of dicts: [{"type": "product_card"|"technique_card", "data": {...}}, ...]
+    """
+    results: list[dict] = []
+    try:
+        if not hasattr(event, "content") or not event.content:
+            return results
+        parts = getattr(event.content, "parts", None)
+        if not parts:
+            return results
+        for part in parts:
+            resp = getattr(part, "function_response", None)
+            if not resp:
+                continue
+            name = getattr(resp, "name", "")
+            if name not in _CARD_TOOLS:
+                continue
+            card_type = _CARD_TOOLS[name]
+            response_data = getattr(resp, "response", None)
+            if response_data is None:
+                continue
+            # Convert to dict
+            if isinstance(response_data, dict):
+                data_dict = response_data
+            elif hasattr(response_data, "get"):
+                try:
+                    data_dict = dict(response_data)
+                except (TypeError, ValueError):
+                    continue
+            else:
+                continue
+
+            if data_dict.get("status") != "success":
+                continue
+
+            if card_type == "product_card" and name == "analyze_product_compatibility":
+                product = data_dict.get("product_analyzed", {})
+                if isinstance(product, dict):
+                    results.append({
+                        "type": "product_card",
+                        "data": {
+                            "brand": product.get("brand", ""),
+                            "product_name": product.get("product_name", ""),
+                            "category": product.get("category", ""),
+                            "price": product.get("price"),
+                            "image_url": product.get("image_url"),
+                            "product_url": product.get("product_url"),
+                            "duplicate_risk": data_dict.get("duplicate_risk", "none"),
+                            "gap_analysis": data_dict.get("gap_analysis", "adds_variety"),
+                            "similar_items_count": len(data_dict.get("similar_items", [])),
+                            "compatibility_summary": "",
+                        },
+                    })
+            elif card_type == "product_card" and name == "compare_products_against_inventory":
+                for comp in data_dict.get("comparisons", []):
+                    if not isinstance(comp, dict):
+                        continue
+                    product = comp.get("product", {})
+                    if isinstance(product, dict):
+                        results.append({
+                            "type": "product_card",
+                            "data": {
+                                "brand": product.get("brand", ""),
+                                "product_name": product.get("product_name", ""),
+                                "category": product.get("category", ""),
+                                "price": product.get("price"),
+                                "image_url": product.get("image_url"),
+                                "product_url": product.get("product_url"),
+                                "duplicate_risk": comp.get("duplicate_risk", "none"),
+                                "gap_analysis": comp.get("gap_analysis", "adds_variety"),
+                                "similar_items_count": len(comp.get("similar_items", [])),
+                                "compatibility_summary": "",
+                            },
+                        })
+            elif card_type == "technique_card":
+                results.append({
+                    "type": "technique_card",
+                    "data": {
+                        "title": data_dict.get("title", "代用テクニック"),
+                        "original_item": data_dict.get("original_item", ""),
+                        "substitute_item": data_dict.get("substitute_item", ""),
+                        "techniques": data_dict.get("techniques", []),
+                        "reasons": data_dict.get("reasons", []),
+                        "general_tips": data_dict.get("general_tips", []),
+                    },
+                })
+            elif card_type == "profiler_card":
+                results.append({
+                    "type": "profiler_card",
+                    "data": {
+                        "color_preferences": data_dict.get("color_preferences", {}),
+                        "texture_preferences": data_dict.get("texture_preferences", {}),
+                        "area_frequency": data_dict.get("area_frequency", {}),
+                        "average_satisfaction": data_dict.get("average_satisfaction"),
+                        "monotony_alert": data_dict.get("monotony_alert"),
+                        "underused_items": data_dict.get("underused_items", []),
+                    },
+                })
+    except Exception as e:
+        logger.warning("Failed to extract card events from event: %s", e)
+    return results
+
+
+def _inject_substitution_search_urls(block: dict) -> None:
+    """Inject Rakuten search_url into substitution info for each recipe step."""
+    import urllib.parse
+
+    recipe = block.get("recipe")
+    if not isinstance(recipe, dict):
+        return
+    steps = recipe.get("steps")
+    if not isinstance(steps, list):
+        return
+    for step in steps:
+        sub = step.get("substitution")
+        if not isinstance(sub, dict):
+            continue
+        name = sub.get("original_name", "")
+        brand = sub.get("original_brand", "")
+        keyword = f"{brand} {name}".strip()
+        if keyword:
+            encoded = urllib.parse.quote_plus(keyword)
+            sub["search_url"] = f"https://search.rakuten.co.jp/search/mall/{encoded}/"
+
+
 def _fallback_save_recipe(recipe_block: dict, user_id: str) -> str | None:
     """Save a recipe to Firestore when the agent didn't call save_recipe.
 
@@ -286,6 +501,21 @@ def _fallback_save_recipe(recipe_block: dict, user_id: str) -> str | None:
         # Preserve used_items from outer wrapper
         if "used_items" in recipe_block and "used_items" not in recipe:
             recipe["used_items"] = recipe_block["used_items"]
+
+        # --- Auto-populate theme fields ---
+        if "theme_title" not in recipe:
+            theme_raw = recipe.pop("theme", "")
+            occasion_raw = recipe.get("occasion", "")
+            recipe["theme_title"] = recipe.get("recipe_name", "メイクレシピ")
+            recipe["theme_description"] = recipe.get("user_request", "")
+            keywords: list[str] = []
+            if theme_raw:
+                keywords.extend([k.strip() for k in re.split(r"[×・、,\s]+", str(theme_raw)) if k.strip()])
+            if occasion_raw and occasion_raw not in keywords:
+                keywords.append(str(occasion_raw))
+            recipe["style_keywords"] = keywords[:5]
+            recipe["theme_status"] = "liked"
+            recipe.setdefault("source", "ai")
 
         recipe["created_at"] = firestore_lib.SERVER_TIMESTAMP
         recipe["updated_at"] = firestore_lib.SERVER_TIMESTAMP
@@ -471,8 +701,31 @@ async def chat(req: ChatRequest):
             state=_build_user_state(req.user_id),
         )
 
-    # Build message content
-    parts: list[types.Part] = [types.Part(text=req.message)]
+    # Build message content — prepend selected items directive if present
+    message_text = req.message
+    if req.selected_item_ids:
+        item_lines = _fetch_selected_items_description(req.user_id, req.selected_item_ids)
+        if item_lines:
+            directive = "[SYSTEM: ユーザーが以下のコスメを指定しました。レシピに必ず含めてください。]\n"
+            directive += "\n".join(f"- {line}" for line in item_lines)
+            directive += "\n[/SYSTEM]\n"
+            message_text = directive + message_text
+
+    if req.match_mode and req.match_mode != "owned_only":
+        mode_labels = {
+            "prefer_owned": "手持ち優先（手持ちコスメを最大限活用し、不足分は具体的な商品を提案してください。不足コスメは save_suggestion で自動保存してください。）",
+            "free": "自由にコーデ（手持ち在庫の制約なし。最適なアイテムを自由に選んでレシピを作成してください。手持ちにないアイテムは item_id を空にし、save_suggestion で保存してください。）",
+        }
+        mode_desc = mode_labels.get(req.match_mode, req.match_mode)
+        mode_directive = f"[SYSTEM: レシピ生成モード: {mode_desc}]\n"
+        message_text = mode_directive + message_text
+
+    if req.selected_brands:
+        brands_str = "、".join(req.selected_brands)
+        brand_directive = f"[SYSTEM: ユーザーが以下のブランドを指定しました。可能な限りこれらのブランドのアイテムを使用してレシピを作成してください。]\n{brands_str}\n[/SYSTEM]\n"
+        message_text = brand_directive + message_text
+
+    parts: list[types.Part] = [types.Part(text=message_text)]
     if req.image_base64 and req.image_mime_type:
         image_bytes = base64.b64decode(req.image_base64)
         parts.append(
@@ -517,6 +770,15 @@ async def chat(req: ChatRequest):
                     progress_data = encoder({"type": "progress", "data": progress}, ensure_ascii=False)
                     yield f"data: {progress_data}\n\n"
 
+                # Emit rich card events for tool results (product/technique)
+                card_events = _extract_card_events_from_event(event)
+                for card_evt in card_events:
+                    card_data = encoder(
+                        {"type": card_evt["type"], "data": json.dumps(card_evt["data"], ensure_ascii=False)},
+                        ensure_ascii=False,
+                    )
+                    yield f"data: {card_data}\n\n"
+
                 # Capture recipe_id from save_recipe tool result
                 if not saved_recipe_id:
                     saved_recipe_id = _extract_recipe_id_from_event(event)
@@ -535,8 +797,12 @@ async def chat(req: ChatRequest):
             json_blocks = _extract_json_blocks(full_text)
             recipe_steps: list[dict] | None = None
             if not json_blocks:
-                logger.info("No JSON blocks found in agent output (%d chars). Recipe card will not be displayed.", len(full_text))
+                logger.info("No JSON blocks found in agent output (%d chars). First 500 chars: %s", len(full_text), full_text[:500])
             for block in json_blocks:
+                # Handle unwrapped recipe format (steps + recipe_name at top level, no "recipe" wrapper)
+                if isinstance(block, dict) and "recipe" not in block and "steps" in block and "recipe_name" in block:
+                    logger.info("Detected unwrapped recipe format — wrapping under 'recipe' key")
+                    block = {"recipe": block}
                 if isinstance(block, dict) and "recipe" in block:
                     # Fallback save: if agent didn't call save_recipe, save it now
                     if not saved_recipe_id and isinstance(block.get("recipe"), dict):
@@ -548,11 +814,52 @@ async def chat(req: ChatRequest):
                     if saved_recipe_id and isinstance(block.get("recipe"), dict):
                         block["recipe"]["id"] = saved_recipe_id
                         recipe_steps = block["recipe"].get("steps")
+                        if not recipe_steps:
+                            logger.warning("recipe_steps not found under block['recipe']['steps']. recipe keys: %s", list(block["recipe"].keys()))
+
+                    # Inject search_url for substitution info
+                    _inject_substitution_search_urls(block)
+
                     recipe_data = encoder(
                         {"type": "recipe_card", "data": json.dumps(block, ensure_ascii=False)},
                         ensure_ascii=False,
                     )
                     yield f"data: {recipe_data}\n\n"
+
+            # Signal frontend that all text/card content is complete — UI can unlock
+            content_done_data = encoder({"type": "content_done", "data": ""}, ensure_ascii=False)
+            yield f"data: {content_done_data}\n\n"
+
+            # Merge recipe into existing theme doc if theme_id was provided
+            if saved_recipe_id and req.theme_id and saved_recipe_id != req.theme_id:
+                try:
+                    db = _get_firestore()
+                    user_recipes = db.collection("users").document(req.user_id).collection("recipes")
+                    new_doc = user_recipes.document(saved_recipe_id).get()
+                    theme_doc = user_recipes.document(req.theme_id).get()
+                    if new_doc.exists and theme_doc.exists:
+                        recipe_data_dict = new_doc.to_dict()
+                        theme_data_dict = theme_doc.to_dict()
+                        merged = {
+                            **recipe_data_dict,
+                            "theme_title": theme_data_dict.get("theme_title", recipe_data_dict.get("theme_title", "")),
+                            "theme_description": theme_data_dict.get("theme_description", ""),
+                            "style_keywords": theme_data_dict.get("style_keywords", recipe_data_dict.get("style_keywords", [])),
+                            "character_theme": theme_data_dict.get("character_theme"),
+                            "theme_status": "liked",
+                            "theme_context": theme_data_dict.get("theme_context", {}),
+                            "preview_image_url": theme_data_dict.get("preview_image_url"),
+                            "source": "ai",
+                            "updated_at": firestore_lib.SERVER_TIMESTAMP,
+                        }
+                        user_recipes.document(req.theme_id).set(merged)
+                        user_recipes.document(saved_recipe_id).delete()
+                        saved_recipe_id = req.theme_id
+                        logger.info("Merged recipe into theme doc %s (deleted %s)", req.theme_id, saved_recipe_id)
+                    elif new_doc.exists:
+                        logger.info("Theme doc %s not found — keeping recipe as %s", req.theme_id, saved_recipe_id)
+                except Exception as merge_err:
+                    logger.warning("Theme-recipe merge failed: %s", merge_err)
 
             # Generate preview image if recipe was saved
             if saved_recipe_id and recipe_steps:
@@ -566,7 +873,7 @@ async def chat(req: ChatRequest):
                             user_id=req.user_id,
                             steps=recipe_steps,
                         ),
-                        timeout=15.0,
+                        timeout=45.0,
                     )
                     if preview_result.get("status") == "success":
                         preview_data = encoder(
@@ -662,6 +969,10 @@ async def chat(req: ChatRequest):
                             )
                             yield f"data: {recipe_data}\n\n"
 
+                    # Signal frontend that all text/card content is complete — UI can unlock
+                    content_done_data = encoder({"type": "content_done", "data": ""}, ensure_ascii=False)
+                    yield f"data: {content_done_data}\n\n"
+
                     # Generate preview image in retry path
                     if retry_recipe_id and retry_steps:
                         progress_data = encoder({"type": "progress", "data": "仕上がりプレビューを生成中..."}, ensure_ascii=False)
@@ -673,7 +984,7 @@ async def chat(req: ChatRequest):
                                     user_id=req.user_id,
                                     steps=retry_steps,
                                 ),
-                                timeout=15.0,
+                                timeout=45.0,
                             )
                             if preview_result.get("status") == "success":
                                 preview_data = encoder(
@@ -899,6 +1210,155 @@ async def generate_image_endpoint(req: GenerateImageRequest):
 # ---------------------------------------------------------------------------
 # GET /health
 # ---------------------------------------------------------------------------
+@app.post("/process-image", dependencies=[Depends(verify_api_key)])
+async def process_image(request: Request):
+    """Process a product image: background removal + normalization.
+
+    Expects JSON: { "image_base64": str, "catalog_id": str }
+    Returns JSON: { "image_url": str } (GCS public URL)
+    """
+    try:
+        body = await request.json()
+        image_b64 = body.get("image_base64", "")
+        catalog_id = body.get("catalog_id", "")
+        if not image_b64 or not catalog_id:
+            raise HTTPException(400, "image_base64 and catalog_id are required")
+
+        image_bytes = base64.b64decode(image_b64)
+
+        # Run image processing in thread pool (CPU-bound)
+        loop = asyncio.get_event_loop()
+        result_bytes = await loop.run_in_executor(
+            None, _process_product_image, image_bytes
+        )
+
+        # Upload to GCS
+        from google.cloud import storage as gcs
+        bucket_name = os.getenv("GCS_CATALOG_BUCKET", "alcheme-catalog-images")
+        client = gcs.Client()
+        bucket = client.bucket(bucket_name)
+        blob = bucket.blob(f"catalog/{catalog_id}.webp")
+        blob.upload_from_string(result_bytes, content_type="image/webp")
+        blob.make_public()
+        image_url = blob.public_url
+
+        # Update catalog entry with processed image
+        db = _get_firestore()
+        db.collection("catalog").document(catalog_id).update({
+            "image_url": image_url,
+            "updated_at": firestore_lib.SERVER_TIMESTAMP,
+        })
+
+        return {"image_url": image_url}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("process-image error: %s", e, exc_info=True)
+        raise HTTPException(500, str(e))
+
+
+def _process_product_image(image_bytes: bytes) -> bytes:
+    """Remove background and normalize to 512x512 square with white bg."""
+    from io import BytesIO
+    try:
+        from rembg import remove as rembg_remove
+    except ImportError:
+        logger.warning("rembg not installed, skipping background removal")
+        rembg_remove = None
+
+    from PIL import Image
+
+    # Background removal (if rembg available)
+    if rembg_remove is not None:
+        image_bytes = rembg_remove(image_bytes)
+
+    # Open and normalize
+    img = Image.open(BytesIO(image_bytes)).convert("RGBA")
+
+    # Create 512x512 white canvas
+    size = 512
+    canvas = Image.new("RGBA", (size, size), (255, 255, 255, 255))
+
+    # Fit image inside canvas (maintain aspect ratio, centered)
+    img.thumbnail((size - 32, size - 32), Image.LANCZOS)  # 16px padding each side
+    x = (size - img.width) // 2
+    y = (size - img.height) // 2
+    canvas.paste(img, (x, y), img)  # Use alpha as mask
+
+    # Convert to RGB (no transparency) and save as WebP
+    result = canvas.convert("RGB")
+    buf = BytesIO()
+    result.save(buf, format="WEBP", quality=85)
+    return buf.getvalue()
+
+
+# ---------------------------------------------------------------------------
+# POST /suggest-themes
+# ---------------------------------------------------------------------------
+@app.post("/suggest-themes", dependencies=[Depends(verify_api_key)])
+async def suggest_themes_endpoint(req: SuggestThemesRequest):
+    """Generate 3 makeup theme suggestions for the user."""
+    try:
+        result = await asyncio.wait_for(
+            generate_theme_suggestions(user_id=req.user_id),
+            timeout=60,
+        )
+        if result.get("status") == "error":
+            raise HTTPException(status_code=500, detail=result.get("error", "Theme generation failed"))
+        return result
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="Theme generation timed out")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Suggest themes error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Theme generation failed: {str(e)}")
+
+
+# ---------------------------------------------------------------------------
+# POST /generate-theme-image
+# ---------------------------------------------------------------------------
+@app.post("/generate-theme-image", dependencies=[Depends(verify_api_key)])
+async def generate_theme_image_endpoint(req: GenerateThemeImageRequest):
+    """Generate a preview image for a theme suggestion."""
+    try:
+        result = await asyncio.wait_for(
+            generate_theme_image(
+                theme_id=req.theme_id,
+                user_id=req.user_id,
+                theme=req.theme,
+            ),
+            timeout=180,
+        )
+        return result
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="Theme image generation timed out")
+    except Exception as e:
+        logger.error("Generate theme image error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Theme image generation failed: {str(e)}")
+
+
+# ---------------------------------------------------------------------------
+# POST /theme-status
+# ---------------------------------------------------------------------------
+@app.post("/theme-status", dependencies=[Depends(verify_api_key)])
+async def update_theme_status_endpoint(req: UpdateThemeStatusRequest):
+    """Update the status of a theme suggestion (liked/skipped)."""
+    if req.status not in ("liked", "skipped"):
+        raise HTTPException(status_code=400, detail="status must be 'liked' or 'skipped'")
+    try:
+        result = await update_theme_status(
+            theme_id=req.theme_id,
+            user_id=req.user_id,
+            status=req.status,
+            recipe_id=req.recipe_id,
+        )
+        return result
+    except Exception as e:
+        logger.error("Update theme status error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Theme status update failed: {str(e)}")
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok", "app": APP_NAME, "agent": root_agent.name}

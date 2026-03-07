@@ -4,6 +4,7 @@ Uses Gemini native image generation to create makeup preview illustrations
 and uploads them to Cloud Storage.
 """
 
+import asyncio
 import logging
 import os
 from typing import Any
@@ -60,27 +61,53 @@ async def generate_preview_image(
     image_location = os.environ.get("SIMULATOR_LOCATION", "us-central1")
 
     try:
+        # Fetch user hair preferences from profile
+        hair_style, hair_color = None, None
+        try:
+            user_doc = _get_firestore().collection("users").document(user_id).get()
+            if user_doc.exists:
+                profile = user_doc.to_dict() or {}
+                hair_style = profile.get("hairType")
+                hair_color = profile.get("hairColor")
+        except Exception as e:
+            logger.warning("Failed to fetch user profile for hair: %s", e)
+
         # Build the image generation prompt
-        prompt = build_image_prompt(steps, theme)
+        prompt = build_image_prompt(steps, theme, hair_style=hair_style, hair_color=hair_color)
         logger.info(
             "Generating preview image for recipe %s (theme=%s, model=%s, location=%s)",
             recipe_id, theme, model_name, image_location,
         )
 
         # Call Gemini with image generation — use dedicated location for Vertex AI
+        # Retry with exponential backoff on 429 RESOURCE_EXHAUSTED
         use_vertexai = os.environ.get("GOOGLE_GENAI_USE_VERTEXAI", "").upper() == "TRUE"
         if use_vertexai:
             project = os.environ.get("GOOGLE_CLOUD_PROJECT", "")
             client = genai.Client(vertexai=True, project=project, location=image_location)
         else:
             client = genai.Client()
-        response = await client.aio.models.generate_content(
-            model=model_name,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_modalities=["IMAGE", "TEXT"],
-            ),
-        )
+
+        response = None
+        for attempt in range(4):
+            try:
+                response = await client.aio.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_modalities=["IMAGE", "TEXT"],
+                    ),
+                )
+                break
+            except Exception as retry_err:
+                if "429" in str(retry_err) or "RESOURCE_EXHAUSTED" in str(retry_err):
+                    wait = 2 ** attempt * 3  # 3s, 6s, 12s, 24s
+                    logger.warning("Gemini 429 on attempt %d, retrying in %ds...", attempt + 1, wait)
+                    await asyncio.sleep(wait)
+                else:
+                    raise
+        if response is None:
+            return {"status": "error", "error": "Gemini rate limit exceeded after retries"}
 
         # Extract image from response
         image_data: bytes | None = None

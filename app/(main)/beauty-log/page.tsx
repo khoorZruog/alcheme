@@ -1,15 +1,18 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { CalendarHeart, Plus, Calendar, List, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
-import { MainTabHeader } from "@/components/main-tab-header";
+import { BeautyTodayCard } from "@/components/beauty-today-card";
+import { BeautyStoriesTray } from "@/components/beauty-stories-tray";
 import { EmptyState } from "@/components/empty-state";
 import { BeautyLogSkeleton } from "@/components/loading-skeleton";
 import { BeautyLogCalendar } from "@/components/beauty-log-calendar";
 import { BeautyLogCard } from "@/components/beauty-log-card";
 import { BeautyLogForm } from "@/components/beauty-log-form";
+import { WeeklyBeautyReport } from "@/components/weekly-beauty-report";
 import { useBeautyLogs } from "@/hooks/use-beauty-log";
 import { cn } from "@/lib/utils";
 import type { BeautyLogEntry } from "@/types/beauty-log";
@@ -36,30 +39,36 @@ function TimelineCard({ log }: { log: BeautyLogEntry }) {
     weekday: "short",
   });
 
+  const heroImage = log.photos?.[0] || log.preview_image_url;
+  const dayNumber = dateObj.getDate();
+
   return (
     <Link href={`/beauty-log/${log.id}`}>
       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
-        {/* Image row */}
-        {(log.preview_image_url || (log.photos && log.photos.length > 0)) && (
-          <div className="flex h-32 overflow-hidden">
-            {log.preview_image_url && (
-              <img
-                src={log.preview_image_url}
-                alt=""
-                className={cn(
-                  "object-cover",
-                  log.photos?.length ? "w-1/2" : "w-full"
-                )}
-              />
+        {/* Hero photo area */}
+        {heroImage ? (
+          <div className="relative h-48 overflow-hidden">
+            <img src={heroImage} alt="" className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-linear-to-t from-black/40 to-transparent" />
+            {/* Rating overlay */}
+            {log.self_rating && (
+              <div className="absolute top-3 right-3 px-2 py-1 rounded-full bg-black/30 backdrop-blur-sm">
+                <span className="text-xs text-alcheme-gold font-bold">
+                  {"★".repeat(log.self_rating)}
+                </span>
+              </div>
             )}
-            {log.photos?.slice(0, log.preview_image_url ? 2 : 3).map((photo, i) => (
-              <img
-                key={i}
-                src={photo}
-                alt=""
-                className="flex-1 object-cover"
-              />
-            ))}
+          </div>
+        ) : (
+          <div className="relative h-32 bg-linear-to-br from-alcheme-rose/20 to-alcheme-gold/20 flex items-center justify-center">
+            <span className="text-4xl font-display font-bold text-text-ink/20">{dayNumber}</span>
+            {log.self_rating && (
+              <div className="absolute top-3 right-3">
+                <span className="text-xs text-alcheme-gold font-bold">
+                  {"★".repeat(log.self_rating)}
+                </span>
+              </div>
+            )}
           </div>
         )}
 
@@ -69,29 +78,36 @@ function TimelineCard({ log }: { log: BeautyLogEntry }) {
             <span className="text-xs font-bold text-text-ink">{dateLabel}</span>
             <div className="flex items-center gap-2">
               {log.weather && (
-                <span className="text-sm">{WEATHER_EMOJI[log.weather] ?? ""}</span>
+                <span className="text-xs text-text-muted">
+                  {WEATHER_EMOJI[log.weather] ?? ""}
+                  {log.temp != null && ` ${log.temp}°C`}
+                </span>
               )}
               {log.mood && (
                 <span className="text-sm">{MOOD_EMOJI[log.mood] ?? "💄"}</span>
-              )}
-              {log.self_rating && (
-                <span className="text-xs text-alcheme-gold font-bold">
-                  {"★".repeat(log.self_rating)}
-                </span>
               )}
             </div>
           </div>
 
           {log.recipe_name && (
-            <p className="text-sm font-medium text-text-ink truncate">{log.recipe_name}</p>
+            <p className="text-sm font-bold text-text-ink truncate">{log.recipe_name}</p>
           )}
-          {log.occasion && (
-            <span className="text-[10px] text-alcheme-rose bg-alcheme-rose/10 px-2 py-0.5 rounded-full mt-1 inline-block">
-              {log.occasion}
-            </span>
-          )}
+
+          <div className="flex items-center gap-2 mt-1">
+            {log.occasion && (
+              <span className="text-[10px] text-alcheme-rose bg-alcheme-rose/10 px-2 py-0.5 rounded-full">
+                {log.occasion}
+              </span>
+            )}
+            {log.mood && (
+              <span className="text-[10px] text-text-muted">
+                {log.mood}
+              </span>
+            )}
+          </div>
+
           {log.user_note && (
-            <p className="text-xs text-text-muted mt-1 line-clamp-2">{log.user_note}</p>
+            <p className="text-xs text-text-muted mt-2 line-clamp-2 leading-relaxed">{log.user_note}</p>
           )}
         </div>
       </div>
@@ -100,14 +116,35 @@ function TimelineCard({ log }: { log: BeautyLogEntry }) {
 }
 
 export default function BeautyLogPage() {
+  return (
+    <Suspense fallback={<BeautyLogSkeleton />}>
+      <BeautyLogPageInner />
+    </Suspense>
+  );
+}
+
+function BeautyLogPageInner() {
   const {
     logs, isLoading, error, mutate, selectedMonth, setSelectedMonth,
     viewMode, setViewMode,
     timelineLogs, timelineLoading, hasMore, loadMore,
   } = useBeautyLogs();
 
+  const searchParams = useSearchParams();
   const [showForm, setShowForm] = useState(false);
   const [formDate, setFormDate] = useState<string | undefined>();
+
+  // Auto-open form when navigated with ?date= or ?new=true (from stories tray)
+  useEffect(() => {
+    const dateParam = searchParams.get("date");
+    const newParam = searchParams.get("new");
+    if (dateParam) {
+      setFormDate(dateParam);
+      setShowForm(true);
+    } else if (newParam === "true") {
+      setShowForm(true);
+    }
+  }, [searchParams]);
 
   const [year, month] = selectedMonth.split("-").map(Number);
 
@@ -144,7 +181,7 @@ export default function BeautyLogPage() {
   if (showForm) {
     return (
       <div>
-        <PageHeader title="メイク日記を記録" backHref="/beauty-log" />
+        <PageHeader title="メイク日記を記録" onBack={handleFormCancel} />
         <BeautyLogForm
           date={formDate}
           onSave={handleFormSave}
@@ -156,8 +193,9 @@ export default function BeautyLogPage() {
 
   return (
     <div className="min-h-full pb-8">
-      <MainTabHeader
+      <PageHeader
         title="メイク日記"
+        backHref="/mypage"
         rightElement={
           <>
             {/* View mode toggle */}
@@ -212,6 +250,11 @@ export default function BeautyLogPage() {
           <BeautyLogSkeleton />
         ) : (
           <>
+            <div className="px-4 pt-2">
+              <BeautyTodayCard />
+              <BeautyStoriesTray />
+            </div>
+            <WeeklyBeautyReport />
             <BeautyLogCalendar
               year={year}
               month={month}
@@ -249,6 +292,7 @@ export default function BeautyLogPage() {
       ) : (
         /* Timeline View */
         <div className="px-4 pt-4">
+          <BeautyStoriesTray />
           {timelineLoading && timelineLogs.length === 0 ? (
             <BeautyLogSkeleton />
           ) : timelineLogs.length === 0 ? (

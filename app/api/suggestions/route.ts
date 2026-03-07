@@ -1,4 +1,4 @@
-// GET  /api/suggestions  — 買い足し候補一覧
+// GET  /api/suggestions  — Next Cosme 一覧
 // POST /api/suggestions  — 候補追加（重複時は recommendation_count++）
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -86,19 +86,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, id: existing.id, incremented: true });
     }
 
-    // Create new suggestion
+    // Create new suggestion — only include defined fields (Firestore rejects undefined)
     const docRef = colRef.doc();
-    await docRef.set({
-      brand, product_name, color_code, color_name, category, item_type,
-      price_range, product_url, image_url,
+    const doc: Record<string, unknown> = {
+      brand,
+      product_name,
       reason: reason || '',
       recommendation_count: 1,
       history: [historyEntry],
       status: '候補',
-      source: source || 'ai',
+      source: source || 'manual',
       created_at: now,
       updated_at: now,
-    });
+    };
+    if (color_code) doc.color_code = color_code;
+    if (color_name) doc.color_name = color_name;
+    if (category) doc.category = category;
+    if (item_type) doc.item_type = item_type;
+    if (price_range) doc.price_range = price_range;
+    if (product_url) doc.product_url = product_url;
+    if (image_url) doc.image_url = image_url;
+    await docRef.set(doc);
 
     return NextResponse.json({ success: true, id: docRef.id, incremented: false }, { status: 201 });
   } catch (error) {

@@ -37,6 +37,8 @@ export interface RakutenCandidate {
 /** 商品マスタ — Firestore: users/{userId}/products/{productId} */
 export interface Product {
   id: string;
+  /** グローバルカタログへの参照 */
+  catalog_id?: string;
   brand: string;
   product_name: string;
   category: CosmeCategory;

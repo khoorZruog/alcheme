@@ -4,9 +4,13 @@ import { useMemo } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import ReactMarkdown from "react-markdown";
+import { RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ChatMessage as ChatMessageType } from "@/types/chat";
 import { RecipeCardInline } from "@/components/recipe-card-inline";
+import { ProductCardInline } from "@/components/product-card-inline";
+import { TechniqueCardInline } from "@/components/technique-card-inline";
+import { ProfilerInsightCard } from "@/components/profiler-insight-card";
 import type { RecipeResult, Recipe } from "@/types/recipe";
 import type { Components } from "react-markdown";
 
@@ -57,6 +61,9 @@ function parseThemeSuggestions(text: string): { intro: string; themes: ThemeSugg
 interface ChatMessageProps {
   message: ChatMessageType;
   onSendMessage?: (text: string) => void;
+  onSelectItemForRecipe?: (itemId: string, itemName: string) => void;
+  onRetry?: () => void;
+  isLastAssistant?: boolean;
   disabled?: boolean;
 }
 
@@ -124,7 +131,7 @@ function normalizeRecipe(r: Record<string, unknown>): Recipe {
   };
 }
 
-export function ChatMessage({ message, onSendMessage, disabled }: ChatMessageProps) {
+export function ChatMessage({ message, onSendMessage, onSelectItemForRecipe, onRetry, isLastAssistant, disabled }: ChatMessageProps) {
   const isUser = message.role === "user";
 
   const { text: rawText, recipe } = useMemo(
@@ -166,7 +173,7 @@ export function ChatMessage({ message, onSendMessage, disabled }: ChatMessagePro
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
-      className={cn("flex", isUser ? "justify-end" : "justify-start")}
+      className={cn("flex relative", isUser ? "justify-end" : "justify-start")}
     >
       <div
         className={cn(
@@ -238,7 +245,42 @@ export function ChatMessage({ message, onSendMessage, disabled }: ChatMessagePro
             <RecipeCardInline recipe={recipeData} previewImageUrl={previewUrl} />
           </div>
         )}
+
+        {message.product_cards && message.product_cards.length > 0 && (
+          <div className="mt-4 space-y-3">
+            {message.product_cards.map((card, i) => (
+              <ProductCardInline key={i} data={card} />
+            ))}
+          </div>
+        )}
+
+        {message.technique_card && (
+          <div className="mt-4">
+            <TechniqueCardInline data={message.technique_card} />
+          </div>
+        )}
+
+        {message.profiler_card && (
+          <div className="mt-4">
+            <ProfilerInsightCard
+              data={message.profiler_card}
+              onSelectItemForRecipe={onSelectItemForRecipe}
+            />
+          </div>
+        )}
       </div>
+
+      {/* Retry button — only on last completed assistant message */}
+      {isLastAssistant && !isUser && !message.is_streaming && onRetry && (
+        <button
+          onClick={onRetry}
+          disabled={disabled}
+          className="absolute -bottom-5 left-1 flex items-center gap-1 text-[11px] text-text-muted hover:text-neon-accent transition-colors disabled:opacity-50"
+        >
+          <RotateCcw className="h-3 w-3" />
+          もう一度生成
+        </button>
+      )}
     </motion.div>
   );
 }

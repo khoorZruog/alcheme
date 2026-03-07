@@ -1,6 +1,6 @@
 import { Palette } from "lucide-react";
 import { Label } from "@/components/ui/label";
-import { SKIN_TYPES, SKIN_TONES, PERSONAL_COLORS, FACE_TYPES } from "../constants";
+import { SKIN_TYPES, SKIN_TONES, PERSONAL_COLORS, FACE_TYPES, HAIR_STYLES, HAIR_COLORS } from "../constants";
 import { VisibilityCheckbox } from "./visibility-checkbox";
 import type { SettingsFormState } from "../use-settings-form";
 
@@ -109,6 +109,49 @@ export function BeautyProfileSection({ form, update }: Props) {
               }`}
             >
               {t}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Hair Style */}
+      <div className="space-y-2">
+        <Label>髪型</Label>
+        <p className="text-xs text-text-muted">AIメイク画像の髪型に反映されます</p>
+        <div className="flex flex-wrap gap-2">
+          {HAIR_STYLES.map((h) => (
+            <button
+              key={h.value}
+              type="button"
+              onClick={() => update("hairStyle", form.hairStyle === h.value ? "" : h.value)}
+              className={`rounded-full px-3 py-1.5 text-sm transition-all btn-squishy ${
+                form.hairStyle === h.value
+                  ? "bg-text-ink text-white shadow-md"
+                  : "bg-white/50 text-text-ink border border-white/60 hover:bg-white/80"
+              }`}
+            >
+              {h.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Hair Color */}
+      <div className="space-y-2">
+        <Label>髪色</Label>
+        <div className="flex flex-wrap gap-2">
+          {HAIR_COLORS.map((c) => (
+            <button
+              key={c.value}
+              type="button"
+              onClick={() => update("hairColor", form.hairColor === c.value ? "" : c.value)}
+              className={`rounded-full px-3 py-1.5 text-sm transition-all btn-squishy ${
+                form.hairColor === c.value
+                  ? "bg-text-ink text-white shadow-md"
+                  : "bg-white/50 text-text-ink border border-white/60 hover:bg-white/80"
+              }`}
+            >
+              {c.label}
             </button>
           ))}
         </div>

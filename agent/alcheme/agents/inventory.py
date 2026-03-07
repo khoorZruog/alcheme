@@ -3,6 +3,7 @@ from google.adk.agents import LlmAgent
 from ..prompts.inventory import INVENTORY_SYSTEM_PROMPT
 from ..tools.inventory_tools import add_items_to_inventory, generate_item_id
 from ..tools.rakuten_api import search_rakuten_api
+from ..tools.catalog_tools import search_catalog
 
 
 def create_inventory_agent() -> LlmAgent:
@@ -19,6 +20,7 @@ def create_inventory_agent() -> LlmAgent:
             add_items_to_inventory,
             generate_item_id,
             search_rakuten_api,
+            search_catalog,
         ],
         output_key="session:last_scan_result",
     )

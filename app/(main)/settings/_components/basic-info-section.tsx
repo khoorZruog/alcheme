@@ -1,7 +1,7 @@
 import { User } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { GENDERS } from "../constants";
+import { GENDERS, LOCATIONS } from "../constants";
 import { calcAgeRange } from "../utils";
 import { VisibilityCheckbox } from "./visibility-checkbox";
 import type { SettingsFormState } from "../use-settings-form";
@@ -55,6 +55,28 @@ export function BasicInfoSection({ form, update }: Props) {
           checked={form.visGender}
           onChange={(v) => update("visGender", v)}
         />
+      </div>
+
+      {/* Location */}
+      <div className="space-y-2">
+        <Label>お住まいの地域</Label>
+        <p className="text-xs text-text-muted">天気に合わせたメイク提案に使用します</p>
+        <div className="flex flex-wrap gap-2">
+          {LOCATIONS.map((loc) => (
+            <button
+              key={loc.value}
+              type="button"
+              onClick={() => update("location", form.location === loc.value ? "" : loc.value)}
+              className={`rounded-full px-4 py-1.5 text-sm transition-all btn-squishy ${
+                form.location === loc.value
+                  ? "bg-text-ink text-white shadow-md"
+                  : "bg-white/50 text-text-ink border border-white/60 hover:bg-white/80"
+              }`}
+            >
+              {loc.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Birthday */}

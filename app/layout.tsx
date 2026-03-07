@@ -8,6 +8,10 @@ export const metadata: Metadata = {
   title: "alche:me — 手持ちコスメで、まだ見ぬ私に出会う",
   description: "手持ちのコスメ在庫からAIエージェントが最適なメイクレシピを提案するアプリ",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/icons/icon-192.svg",
+    apple: "/icons/icon-192.svg",
+  },
 };
 
 export const viewport: Viewport = {

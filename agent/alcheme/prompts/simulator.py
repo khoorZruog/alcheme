@@ -34,6 +34,49 @@ CHARACTER_THEMES: dict[str, dict[str, str]] = {
 DEFAULT_THEME = "cute"
 
 # ---------------------------------------------------------------------------
+# Hair style / color → English prompt mappings
+# ---------------------------------------------------------------------------
+HAIR_STYLE_EN: dict[str, str] = {
+    "very-short": "very short pixie",
+    "short": "short",
+    "bob": "bob-length",
+    "medium": "medium-length",
+    "semi-long": "shoulder-length",
+    "long": "long",
+}
+
+HAIR_COLOR_EN: dict[str, str] = {
+    "black": "black",
+    "dark-brown": "dark brown",
+    "brown": "brown",
+    "light-brown": "light brown",
+    "ash": "ash grey",
+    "blonde": "blonde",
+    "pink": "pink",
+    "red": "red",
+}
+
+
+def build_hair_description(
+    hair_style: str | None,
+    hair_color: str | None,
+) -> str:
+    """Build an English hair description fragment for image prompts.
+
+    Returns a string like ', with dark brown long hair' or '' if no data.
+    """
+    parts: list[str] = []
+    color_en = HAIR_COLOR_EN.get(hair_color or "", "")
+    style_en = HAIR_STYLE_EN.get(hair_style or "", "")
+    if color_en:
+        parts.append(color_en)
+    if style_en:
+        parts.append(style_en)
+    if not parts:
+        return ""
+    return ", with " + " ".join(parts) + " hair"
+
+# ---------------------------------------------------------------------------
 # Makeup area mapping — Japanese step categories to English face regions
 # ---------------------------------------------------------------------------
 _AREA_MAP: dict[str, str] = {
@@ -113,12 +156,16 @@ def _describe_step_makeup(step: dict) -> str:
 def build_image_prompt(
     steps: list[dict],
     theme: str = DEFAULT_THEME,
+    hair_style: str | None = None,
+    hair_color: str | None = None,
 ) -> str:
     """Build a Gemini image generation prompt from recipe steps and theme.
 
     Args:
         steps: List of recipe step dicts from the Alchemist agent.
         theme: One of 'cute', 'cool', 'elegant'.
+        hair_style: User's selected hair style value (e.g. 'long', 'bob').
+        hair_color: User's selected hair color value (e.g. 'dark-brown').
 
     Returns:
         English prompt string (~200 words) for Gemini image generation.
@@ -144,7 +191,8 @@ def build_image_prompt(
 
     makeup_description = "\n".join(makeup_parts)
 
-    prompt = f"""Generate a single portrait illustration of {theme_config['face_style']}.
+    hair_desc = build_hair_description(hair_style, hair_color)
+    prompt = f"""Generate a single portrait illustration of {theme_config['face_style']}{hair_desc}.
 
 Expression: {theme_config['expression']}.
 Lighting: {theme_config['lighting']}.

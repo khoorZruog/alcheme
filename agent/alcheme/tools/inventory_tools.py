@@ -218,6 +218,14 @@ def add_items_to_inventory(items_json: str, tool_context: ToolContext) -> dict:
                 product_doc = products_ref.document()
                 product_fields["created_at"] = firestore.SERVER_TIMESTAMP
                 product_fields["updated_at"] = firestore.SERVER_TIMESTAMP
+                # Upsert to global catalog (best-effort)
+                try:
+                    from .catalog_tools import upsert_catalog
+                    catalog_id = upsert_catalog(product_fields)
+                    if catalog_id:
+                        product_fields["catalog_id"] = catalog_id
+                except Exception:
+                    pass  # Catalog failure should not block inventory registration
                 product_doc.set(product_fields)
                 product_id = product_doc.id
                 existing[key] = product_id

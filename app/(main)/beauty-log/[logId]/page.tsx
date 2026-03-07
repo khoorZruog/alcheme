@@ -118,7 +118,10 @@ export default function BeautyLogDetailPage({
             <div className="flex items-center justify-center gap-3">
               <span className="text-sm text-text-muted">{weekday}</span>
               {log.weather && (
-                <span className="text-lg">{WEATHER_EMOJI[log.weather] ?? ""}</span>
+                <span className="text-sm text-text-muted">
+                  {WEATHER_EMOJI[log.weather] ?? ""} {log.weather}
+                  {log.temp != null && ` ${log.temp}°C`}
+                </span>
               )}
               {log.mood && (
                 <span className="text-lg">{MOOD_EMOJI[log.mood] ?? "💄"}</span>
@@ -194,6 +197,12 @@ export default function BeautyLogDetailPage({
               {log.weather && (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 text-sm text-blue-600">
                   <CloudSun className="h-3.5 w-3.5" /> {log.weather}
+                  {log.temp != null && ` ${log.temp}°C`}
+                </span>
+              )}
+              {log.humidity != null && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 text-sm text-blue-600">
+                  💧 湿度{log.humidity}%
                 </span>
               )}
             </div>

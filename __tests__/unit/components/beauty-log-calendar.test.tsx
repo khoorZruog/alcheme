@@ -39,8 +39,9 @@ describe("BeautyLogCalendar", () => {
 
   it("renders correct number of day cells (Feb 2026 = 28 days)", () => {
     render(<BeautyLogCalendar {...defaultProps} />);
-    // Feb 2026 has 28 days
-    expect(screen.getByText("1")).toBeDefined();
+    // Feb 2026 has 28 days — use getAllByText since summary stats may contain matching text
+    const ones = screen.getAllByText("1");
+    expect(ones.length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("28")).toBeDefined();
   });
 

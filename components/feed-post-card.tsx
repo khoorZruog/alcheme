@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Heart, MessageCircle } from "lucide-react";
+import { Heart, MessageCircle, UserPlus } from "lucide-react";
 import type { SocialPost } from "@/types/social";
 
 function timeAgo(dateStr: string): string {
@@ -22,9 +22,12 @@ interface FeedPostCardProps {
   post: SocialPost;
   onLike?: () => void;
   onCommentClick?: () => void;
+  isFollowing?: boolean;
+  isOwnPost?: boolean;
+  onFollow?: () => void;
 }
 
-export function FeedPostCard({ post, onLike, onCommentClick }: FeedPostCardProps) {
+export function FeedPostCard({ post, onLike, onCommentClick, isFollowing, isOwnPost, onFollow }: FeedPostCardProps) {
   return (
     <div className="glass-card rounded-[20px] overflow-hidden">
       {/* Author row */}
@@ -51,6 +54,18 @@ export function FeedPostCard({ post, onLike, onCommentClick }: FeedPostCardProps
             <p className="text-xs text-alcheme-muted">{timeAgo(post.created_at)}</p>
           </div>
         </Link>
+        {!isOwnPost && !isFollowing && onFollow && (
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              onFollow();
+            }}
+            className="flex items-center gap-1 px-3 py-1 rounded-full bg-gradient-to-r from-neon-accent to-magic-pink text-white text-xs font-medium btn-squishy transition-all"
+          >
+            <UserPlus size={12} />
+            <span>フォロー</span>
+          </button>
+        )}
       </div>
 
       {/* Preview image */}

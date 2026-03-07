@@ -89,6 +89,13 @@ def save_suggestion(suggestion_json: str, tool_context: ToolContext) -> dict:
             logger.info("Updated existing suggestion %s for user %s", existing_doc.id, user_id)
             return {"status": "success", "suggestion_id": existing_doc.id, "incremented": True}
 
+        # Upsert to global catalog (best-effort)
+        try:
+            from .catalog_tools import upsert_catalog
+            upsert_catalog(data, "want")
+        except Exception:
+            pass  # Catalog failure should not block suggestion creation
+
         # Create new suggestion
         doc_ref = col_ref.document()
         doc_ref.set({

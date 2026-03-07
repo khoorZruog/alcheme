@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { message, image_base64, image_mime_type } = body;
+    const { message, image_base64, image_mime_type, selected_item_ids, match_mode, selected_brands, theme_id } = body;
 
     if (!message) {
       return NextResponse.json(
@@ -32,6 +32,10 @@ export async function POST(request: NextRequest) {
       ...(image_base64 && image_mime_type
         ? { image_base64, image_mime_type }
         : {}),
+      ...(selected_item_ids?.length ? { selected_item_ids } : {}),
+      ...(match_mode && match_mode !== "owned_only" ? { match_mode } : {}),
+      ...(selected_brands?.length ? { selected_brands } : {}),
+      ...(theme_id ? { theme_id } : {}),
     });
 
     if (!agentStream) {

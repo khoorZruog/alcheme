@@ -6,6 +6,9 @@ import { Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
 import { cn } from "@/lib/utils";
+import { useBrandSuggestions } from "@/hooks/use-brand-suggestions";
+import { useProductSuggestions } from "@/hooks/use-product-suggestions";
+import { AutocompleteInput } from "@/components/autocomplete-input";
 
 const CATEGORIES = ["ベースメイク", "アイメイク", "リップ", "スキンケア", "その他"] as const;
 
@@ -21,6 +24,10 @@ export default function SuggestionsAddPage() {
   const [imageUrl, setImageUrl] = useState("");
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Brand & product autocomplete
+  const { suggestions: brandSuggestions, isLoading: brandLoading } = useBrandSuggestions(brand);
+  const { suggestions: productSuggestions, isLoading: productLoading } = useProductSuggestions(productName, brand);
 
   const handleSave = useCallback(async () => {
     if (!brand.trim() || !productName.trim()) {
@@ -48,7 +55,7 @@ export default function SuggestionsAddPage() {
         body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error();
-      toast.success("買い足し候補に追加しました！");
+      toast.success("Next Cosme に追加しました！");
       router.push("/suggestions");
     } catch {
       toast.error("追加に失敗しました");
@@ -58,7 +65,7 @@ export default function SuggestionsAddPage() {
 
   return (
     <div className="min-h-full pb-32">
-      <PageHeader title="候補を追加" backHref="/suggestions" />
+      <PageHeader title="Next Cosme を追加" backHref="/suggestions" />
 
       <div className="px-4 py-4 space-y-5">
         {/* Brand */}
@@ -66,12 +73,14 @@ export default function SuggestionsAddPage() {
           <label className="block text-xs font-bold text-text-ink uppercase tracking-widest mb-2">
             ブランド名 *
           </label>
-          <input
-            type="text"
+          <AutocompleteInput
             value={brand}
-            onChange={(e) => setBrand(e.target.value)}
+            onChange={setBrand}
+            suggestions={brandSuggestions}
+            isLoading={brandLoading}
             placeholder="例: ADDICTION"
             className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-text-ink placeholder:text-gray-400 focus:border-neon-accent focus:outline-none"
+            showSource
           />
         </div>
 
@@ -80,12 +89,14 @@ export default function SuggestionsAddPage() {
           <label className="block text-xs font-bold text-text-ink uppercase tracking-widest mb-2">
             商品名 *
           </label>
-          <input
-            type="text"
+          <AutocompleteInput
             value={productName}
-            onChange={(e) => setProductName(e.target.value)}
+            onChange={setProductName}
+            suggestions={productSuggestions}
+            isLoading={productLoading}
             placeholder="例: ザ アイシャドウ"
             className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-text-ink placeholder:text-gray-400 focus:border-neon-accent focus:outline-none"
+            showSource
           />
         </div>
 

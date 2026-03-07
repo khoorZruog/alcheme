@@ -7,8 +7,10 @@ Uses the Google Weather API (Maps Platform).
 Docstrings are used as tool descriptions by ADK.
 """
 
+import json
 import os
 import logging
+import time
 from typing import Any
 
 import requests
@@ -18,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 GOOGLE_WEATHER_API_KEY = os.environ.get("GOOGLE_WEATHER_API_KEY", "")
 GOOGLE_WEATHER_BASE_URL = "https://weather.googleapis.com/v1/currentConditions:lookup"
+OPEN_METEO_BASE_URL = "https://api.open-meteo.com/v1/forecast"
 
 # City name → (latitude, longitude) for common Japanese cities
 _CITY_COORDS: dict[str, tuple[float, float]] = {
@@ -63,6 +66,58 @@ _WEATHER_BEAUTY_TIPS: dict[str, str] = {
 }
 
 
+# WMO weather code → internal weather type mapping (Open-Meteo)
+_WMO_CODE_MAP: dict[int, str] = {
+    0: "CLEAR", 1: "MOSTLY_CLEAR", 2: "PARTLY_CLOUDY", 3: "CLOUDY",
+    45: "FOGGY", 48: "FOGGY",
+    51: "LIGHT_RAIN", 53: "RAINY", 55: "HEAVY_RAIN",
+    56: "LIGHT_RAIN", 57: "HEAVY_RAIN",
+    61: "LIGHT_RAIN", 63: "RAINY", 65: "HEAVY_RAIN",
+    66: "LIGHT_RAIN", 67: "HEAVY_RAIN",
+    71: "LIGHT_SNOW", 73: "SNOWY", 75: "SNOWY",
+    77: "SNOWY",
+    80: "LIGHT_RAIN", 81: "RAINY", 82: "HEAVY_RAIN",
+    85: "LIGHT_SNOW", 86: "SNOWY",
+    95: "THUNDERSTORM", 96: "THUNDERSTORM", 99: "THUNDERSTORM",
+}
+
+# WMO weather code → Japanese description
+_WMO_CODE_DESC: dict[int, str] = {
+    0: "快晴", 1: "晴れ", 2: "くもり時々晴れ", 3: "くもり",
+    45: "霧", 48: "霧",
+    51: "小雨", 53: "雨", 55: "大雨",
+    56: "凍雨", 57: "凍雨",
+    61: "小雨", 63: "雨", 65: "大雨",
+    66: "凍雨", 67: "凍雨",
+    71: "小雪", 73: "雪", 75: "大雪",
+    77: "雪", 80: "にわか雨", 81: "にわか雨", 82: "激しいにわか雨",
+    85: "にわか雪", 86: "にわか雪",
+    95: "雷雨", 96: "雷雨（雹を伴う）", 99: "雷雨（雹を伴う）",
+}
+
+
+# In-memory weather cache (TTL-based) to reduce Open-Meteo API calls
+_weather_cache: dict[str, tuple[float, dict]] = {}
+_CACHE_TTL = 900  # 15 minutes
+
+
+def _get_cached(lat: float, lng: float) -> dict | None:
+    """Return cached weather data if still fresh, else None."""
+    key = f"{lat:.2f},{lng:.2f}"
+    if key in _weather_cache:
+        ts, data = _weather_cache[key]
+        if time.time() - ts < _CACHE_TTL:
+            return data
+        del _weather_cache[key]
+    return None
+
+
+def _set_cache(lat: float, lng: float, data: dict) -> None:
+    """Store weather data in cache."""
+    key = f"{lat:.2f},{lng:.2f}"
+    _weather_cache[key] = (time.time(), data)
+
+
 def _resolve_coords(location: str) -> tuple[float, float]:
     """Resolve a city name to latitude/longitude. Defaults to Tokyo."""
     key = location.strip().lower()
@@ -93,6 +148,80 @@ def _uv_advice(uvi: float | None) -> str:
     return ""
 
 
+def _fetch_open_meteo(lat: float, lng: float, location: str) -> dict | None:
+    """Fetch weather from Open-Meteo API (free, no key required, Japan supported).
+
+    Data by Open-Meteo.com (https://open-meteo.com/) under CC BY 4.0.
+    """
+    try:
+        resp = requests.get(
+            OPEN_METEO_BASE_URL,
+            params={
+                "latitude": lat,
+                "longitude": lng,
+                "current": "temperature_2m,relative_humidity_2m,weather_code,uv_index,precipitation",
+                "timezone": "Asia/Tokyo",
+            },
+            timeout=5,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+        current = data.get("current", {})
+        wmo_code = current.get("weather_code", 0)
+        weather_type = _WMO_CODE_MAP.get(wmo_code, "CLOUDY")
+        weather_desc = _WMO_CODE_DESC.get(wmo_code, "くもり")
+
+        temp = current.get("temperature_2m")
+        humidity = current.get("relative_humidity_2m", 50)
+        uvi = current.get("uv_index")
+
+        logger.info(json.dumps({
+            "message": "weather_api_call",
+            "source": "open-meteo",
+            "endpoint": "agent/weather",
+            "location": location,
+        }))
+        result = {
+            "weather_type": weather_type,
+            "weather_desc": weather_desc,
+            "temp": temp,
+            "humidity": humidity,
+            "uvi": uvi,
+            "source": "open-meteo",
+        }
+        _set_cache(lat, lng, result)
+        return result
+    except requests.RequestException as e:
+        logger.warning("Open-Meteo API request failed for %s: %s", location, e)
+        return None
+
+
+def _build_beauty_advice(
+    weather_type: str, humidity: int, uvi: float | None, temp: float | None,
+    rain_prob: int | None = None,
+) -> list[str]:
+    """Build beauty advice tips from weather data."""
+    tips: list[str] = []
+    tip = _WEATHER_BEAUTY_TIPS.get(weather_type, "")
+    if tip:
+        tips.append(tip)
+    humidity_tip = _humidity_advice(humidity)
+    if humidity_tip:
+        tips.append(humidity_tip)
+    uv_tip = _uv_advice(uvi)
+    if uv_tip:
+        tips.append(uv_tip)
+    if temp is not None:
+        if temp >= 30:
+            tips.append("猛暑：汗崩れ対策が最重要。軽めのベースメイクがおすすめ")
+        elif temp <= 5:
+            tips.append("寒い日：血色感が出にくいので、チークやリップで色味をプラス")
+    if rain_prob is not None and rain_prob >= 50:
+        tips.append(f"降水確率{rain_prob}%：ウォータープルーフ推奨")
+    return tips
+
+
 def get_weather(location: str, tool_context: ToolContext) -> dict:
     """Get current weather information for makeup recommendations.
 
@@ -109,81 +238,98 @@ def get_weather(location: str, tool_context: ToolContext) -> dict:
     if not location or location.strip() == "":
         location = tool_context.state.get("user:location", "Tokyo")
 
-    if not GOOGLE_WEATHER_API_KEY:
-        return {
-            "status": "unavailable",
-            "message": "天気情報は現在利用できません。手動で天気を教えてください。",
-            "location": location,
-        }
-
     lat, lng = _resolve_coords(location)
 
-    try:
-        resp = requests.get(
-            GOOGLE_WEATHER_BASE_URL,
-            params={
-                "key": GOOGLE_WEATHER_API_KEY,
-                "location.latitude": lat,
-                "location.longitude": lng,
-                "languageCode": "ja",
-            },
-            timeout=5,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-
-        # Extract fields from Google Weather API response
-        condition = data.get("weatherCondition", {})
-        weather_type = condition.get("type", "")
-        weather_desc = condition.get("description", {}).get("text", "")
-
-        temp_obj = data.get("temperature", {})
-        temp = temp_obj.get("degrees")
-
-        humidity = data.get("relativeHumidity", 50)
-        uvi = data.get("uvIndex")
-
-        precip = data.get("precipitation", {})
-        rain_prob = precip.get("probability", {}).get("percent")
-
-        # Build beauty advice
-        beauty_tips: list[str] = []
-        tip = _WEATHER_BEAUTY_TIPS.get(weather_type, "")
-        if tip:
-            beauty_tips.append(tip)
-        humidity_tip = _humidity_advice(humidity)
-        if humidity_tip:
-            beauty_tips.append(humidity_tip)
-        uv_tip = _uv_advice(uvi)
-        if uv_tip:
-            beauty_tips.append(uv_tip)
-
-        # Temperature-based advice
-        if temp is not None:
-            if temp >= 30:
-                beauty_tips.append("猛暑：汗崩れ対策が最重要。軽めのベースメイクがおすすめ")
-            elif temp <= 5:
-                beauty_tips.append("寒い日：血色感が出にくいので、チークやリップで色味をプラス")
-
-        # Rain probability advice
-        if rain_prob is not None and rain_prob >= 50:
-            beauty_tips.append(f"降水確率{rain_prob}%：ウォータープルーフ推奨")
-
+    # Check cache first
+    cached = _get_cached(lat, lng)
+    if cached:
+        weather_type = cached["weather_type"]
         return {
             "status": "success",
             "location": location,
-            "weather": weather_desc,
+            "weather": cached.get("weather_desc", ""),
             "weather_type": weather_type,
-            "temperature": temp,
-            "humidity": humidity,
-            "uv_index": uvi,
-            "rain_probability": rain_prob,
-            "beauty_advice": beauty_tips,
+            "temperature": cached.get("temp"),
+            "humidity": cached.get("humidity", 50),
+            "uv_index": cached.get("uvi"),
+            "rain_probability": None,
+            "beauty_advice": _build_beauty_advice(
+                weather_type, cached.get("humidity", 50),
+                cached.get("uvi"), cached.get("temp"),
+            ),
+            "source": f"{cached.get('source', 'open-meteo')} (cached)",
         }
-    except requests.RequestException as e:
-        logger.warning("Google Weather API request failed for %s: %s", location, e)
+
+    # Try Google Weather API first (if key is configured)
+    if GOOGLE_WEATHER_API_KEY:
+        try:
+            resp = requests.get(
+                GOOGLE_WEATHER_BASE_URL,
+                params={
+                    "key": GOOGLE_WEATHER_API_KEY,
+                    "location.latitude": lat,
+                    "location.longitude": lng,
+                    "languageCode": "ja",
+                },
+                timeout=5,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                condition = data.get("weatherCondition", {})
+                weather_type = condition.get("type", "")
+                weather_desc = condition.get("description", {}).get("text", "")
+                temp_obj = data.get("temperature", {})
+                temp = temp_obj.get("degrees")
+                humidity = data.get("relativeHumidity", 50)
+                uvi = data.get("uvIndex")
+                precip = data.get("precipitation", {})
+                rain_prob = precip.get("probability", {}).get("percent")
+
+                logger.info(json.dumps({
+                    "message": "weather_api_call",
+                    "source": "google-weather",
+                    "endpoint": "agent/weather",
+                    "location": location,
+                }))
+                return {
+                    "status": "success",
+                    "location": location,
+                    "weather": weather_desc,
+                    "weather_type": weather_type,
+                    "temperature": temp,
+                    "humidity": humidity,
+                    "uv_index": uvi,
+                    "rain_probability": rain_prob,
+                    "beauty_advice": _build_beauty_advice(weather_type, humidity, uvi, temp, rain_prob),
+                    "source": "google-weather",
+                }
+            # 404 = location not supported by Google Weather API
+            if resp.status_code == 404:
+                logger.info("Google Weather API does not support %s, falling back to Open-Meteo", location)
+            else:
+                resp.raise_for_status()
+        except requests.RequestException as e:
+            logger.warning("Google Weather API failed for %s: %s, trying Open-Meteo", location, e)
+
+    # Fallback: Open-Meteo (free, no API key, supports Japan)
+    om = _fetch_open_meteo(lat, lng, location)
+    if om:
         return {
-            "status": "error",
-            "message": f"天気情報の取得に失敗しました: {e}",
+            "status": "success",
             "location": location,
+            "weather": om["weather_desc"],
+            "weather_type": om["weather_type"],
+            "temperature": om["temp"],
+            "humidity": om["humidity"],
+            "uv_index": om["uvi"],
+            "rain_probability": None,
+            "beauty_advice": _build_beauty_advice(om["weather_type"], om["humidity"], om["uvi"], om["temp"]),
+            "source": "open-meteo",
+            "attribution": "Weather data by Open-Meteo.com (CC BY 4.0)",
         }
+
+    return {
+        "status": "unavailable",
+        "message": "天気情報は現在利用できません。手動で天気を教えてください。",
+        "location": location,
+    }

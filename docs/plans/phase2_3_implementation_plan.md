@@ -308,7 +308,7 @@ social/user_stats/{userId}
 ### 設計方針
 - LlmAgent として実装（ParallelAgent/SequentialAgent はワークフローエージェントでLLM推論なし）
 - Trend Hunter: google_search を使ったSNSトレンド調査（ADK制約：google_search は単独agent）
-- TPO Tactician: OpenWeatherMap API + セッション状態ベースの予定管理（MVP）
+- TPO Tactician: 天気API（Google Weather API + Open-Meteo フォールバック）+ セッション状態ベースの予定管理（MVP）。Google Weather API は日本未対応のため、日本国内では実質 Open-Meteo（CC BY 4.0）が使用される。
 - カレンダーはMVPでは手動入力、将来Google Calendar API統合予定
 
 ### 実装内容
@@ -319,7 +319,7 @@ social/user_stats/{userId}
 | 2 | **Trend Hunter プロンプト** — トレンド分析の指示 | `agent/alcheme/prompts/trend_hunter.py` (新規) | ✅ |
 | 3 | **TPO Tactician Agent** — 天気+予定ベース提案 (LlmAgent) | `agent/alcheme/agents/tpo_tactician.py` (新規) | ✅ |
 | 4 | **TPO Tactician プロンプト** — TPO分析の指示 | `agent/alcheme/prompts/tpo_tactician.py` (新規) | ✅ |
-| 5 | **ツール: get_weather** — OpenWeatherMap API | `agent/alcheme/tools/weather_tools.py` (新規) | ✅ |
+| 5 | **ツール: get_weather** — 天気API (Google Weather + Open-Meteo fallback) | `agent/alcheme/tools/weather_tools.py` (新規) | ✅ |
 | 6 | **ツール: get_today_schedule** — セッション状態ベース予定取得 | `agent/alcheme/tools/calendar_tools.py` (新規) | ✅ |
 | 7 | **Concierge ルーティング更新** — Trend/TPO への委譲ルール追加 | `agent/alcheme/prompts/concierge.py` | ✅ |
 | 8 | **Root Agent 更新** — サブエージェント登録 | `agent/alcheme/agent.py` | ✅ |
@@ -511,7 +511,7 @@ analytics/                        ← NEW: B2Bデータ (BigQuery連携)
 ## 次のアクション
 
 1. ~~Batch 0.5〜8.5: 全て実装完了~~ ✅
-2. ~~Zenn記事 (`docs/zenn_article.md`) を実装状況に合わせて更新~~ ✅
+2. ~~Zenn記事 (`docs/presentation/zenn_article.md`) を実装状況に合わせて更新~~ ✅
 3. ~~README.md をリポジトリルートに作成~~ ✅
 4. ~~E2Eテスト実施~~ ✅ — Playwright E2E 12テスト + Unit 127テスト 全パス
 5. ~~GitHub リポジトリ公開~~ ✅

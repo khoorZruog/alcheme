@@ -10,7 +10,7 @@ export interface SuggestionHistory {
   context: string;
 }
 
-/** 買い足し候補アイテム */
+/** Next Cosme アイテム */
 export interface SuggestedItem {
   id: string;
   brand: string;

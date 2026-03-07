@@ -21,6 +21,11 @@ import {
   getPaoMonths,
 } from "@/lib/cosme-constants";
 import type { CosmeCategory, CosmeTexture, CosmeStats } from "@/types/inventory";
+import { useBrandSuggestions } from "@/hooks/use-brand-suggestions";
+import { useProductSuggestions } from "@/hooks/use-product-suggestions";
+import { AutocompleteInput } from "@/components/autocomplete-input";
+import { DuplicateWarning } from "@/components/duplicate-warning";
+import { useInventory } from "@/hooks/use-inventory";
 
 const TEXTURES: CosmeTexture[] = [
   "マット", "ツヤ", "サテン", "シマー", "クリーム", "パウダー", "リキッド",
@@ -87,6 +92,11 @@ export default function ManualAddPage() {
 
   const itemTypes = getItemTypesForGroup(form.category);
   const paoMonths = getPaoMonths(form.item_type);
+
+  // Brand & product autocomplete + duplicate detection
+  const { suggestions: brandSuggestions, isLoading: brandLoading } = useBrandSuggestions(form.brand);
+  const { suggestions: productSuggestions, isLoading: productLoading } = useProductSuggestions(form.product_name, form.brand);
+  const { items: inventoryItems } = useInventory();
 
   const handleCategoryChange = (cat: CosmeCategory) => {
     const types = getItemTypesForGroup(cat);
@@ -236,24 +246,28 @@ export default function ManualAddPage() {
           <Label className="text-text-ink">
             ブランド <span className="text-red-400">*</span>
           </Label>
-          <Input
+          <AutocompleteInput
             value={form.brand}
-            onChange={(e) => setForm({ ...form, brand: e.target.value })}
+            onChange={(v) => setForm({ ...form, brand: v })}
+            suggestions={brandSuggestions}
+            isLoading={brandLoading}
             placeholder="例: KATE, Dior"
-            className="rounded-input"
+            className="rounded-input flex h-9 w-full border border-input bg-transparent px-3 py-1 text-base shadow-sm"
+            showSource
           />
         </div>
         <div className="space-y-1.5">
           <Label className="text-text-ink">
             商品名 <span className="text-red-400">*</span>
           </Label>
-          <Input
+          <AutocompleteInput
             value={form.product_name}
-            onChange={(e) =>
-              setForm({ ...form, product_name: e.target.value })
-            }
+            onChange={(v) => setForm({ ...form, product_name: v })}
+            suggestions={productSuggestions}
+            isLoading={productLoading}
             placeholder="例: リップモンスター"
-            className="rounded-input"
+            className="rounded-input flex h-9 w-full border border-input bg-transparent px-3 py-1 text-base shadow-sm"
+            showSource
           />
         </div>
 
@@ -293,6 +307,13 @@ export default function ManualAddPage() {
             className="rounded-input"
           />
         </div>
+
+        <DuplicateWarning
+          brand={form.brand}
+          productName={form.product_name}
+          colorCode={form.color_code}
+          items={inventoryItems}
+        />
 
         {/* Texture + Remaining */}
         <div className="grid grid-cols-2 gap-3">

@@ -243,11 +243,11 @@ gcloud services enable run.googleapis.com artifactregistry.googleapis.com cloudb
 
 **β テスター準備:**
 - Cloud Run デフォルト URL（*.run.app）で Phase 1 運用（カスタムドメインは Phase 2）
-- Create `docs/beta-guide.md` — アクセスURL、テストアカウント作成手順、Phase 1 制限事項、フィードバック方法
+- Create `docs/guides/beta-guide.md` — アクセスURL、テストアカウント作成手順、Phase 1 制限事項、フィードバック方法
 
 **Update docs:**
-- `docs/CLAUDE_CODE_INSTRUCTIONS_v1_3.md` — Mark Week 4 tasks `[x]`
-- `docs/alcheme_PRD_v4.md` — Phase 1 status → `✅ 完了`
+- `docs/reference/CLAUDE_CODE_INSTRUCTIONS_v1_3.md` — Mark Week 4 tasks `[x]`
+- `docs/architecture/alcheme_PRD_v4.md` — Phase 1 status → `✅ 完了`
 - Create `docs/plans/week4_implementation_plan.md`
 
 ---

@@ -1,8 +1,8 @@
 # Phase 1 (MVP) 完了状況監査レポート
 
-**Date:** 2026-02-16 (Updated)
+**Date:** 2026-02-17 (Updated)
 **Auditor:** Claude Code (Opus 4.6)
-**Status:** ✅ Phase 1 全項目完了 → Phase 2 Batch 0.5〜8.5 完了
+**Status:** ✅ Phase 1 全項目完了 → Phase 2 Batch 0.5〜8.5 完了 → Phase 2.5 バグ修正待ち
 
 ---
 
@@ -91,11 +91,18 @@
 | Session State `user:display_name` | ✅ 設定済み | 同上 |
 | Session State `user:beauty_goals` | ✅ 設定済み | 同上 |
 | Session State `session:current_inventory_summary` | ✅ | `get_inventory_summary` が設定 |
-| Memory Service | ✅ `InMemoryMemoryService` | クロスセッション記憶。セッション上限20イベント超過時にメモリ抽出 |
+| Memory Service | ⚠️ `InMemoryMemoryService` | クロスセッション記憶。**ただしコンテナ再起動でリセットされる（揮発性）**。セッション上限20イベント超過時にメモリ抽出 |
+
+### 既知の問題
+
+| # | 問題 | 影響 | 対応方針 |
+|---|------|------|---------|
+| MEM-1 | `InMemoryMemoryService` は揮発性 | コンテナ再起動・スケールイン時にメモリが失われる | Phase 2.5: Firestore ベースの MemoryService を実装。Phase 3: `VertexAiRagMemoryService` への移行 |
+| MEM-2 | SQLite SessionDB はシングルインスタンス前提 | マルチインスタンス構成時にセッション共有不可 | Phase 3: Cloud SQL or Firestore への移行 |
 
 ### Phase 3 改善ポイント
 
-1. **RAG Memory**: `InMemoryMemoryService` → `VertexAiRagMemoryService` への移行（再起動耐性）
+1. **RAG Memory**: `InMemoryMemoryService` → Firestore ベース → `VertexAiRagMemoryService` への段階的移行（再起動耐性）
 2. **セッションDB**: SQLite → Cloud SQL or Firestore への移行（マルチインスタンス対応）
 
 ---
@@ -196,6 +203,19 @@ firestore_root/
 
 **エージェント数: 10体**（Concierge, Inventory, Product Search, Alchemist, Simulator, Memory Keeper, Trend Hunter, TPO Tactician, Profiler, Makeup Instructor）
 
+### Phase 2.5 (バグ修正 + Quick Wins) — 🔧 次のアクション
+
+| # | 項目 | 優先度 | 詳細 |
+|---|------|--------|------|
+| BUG-001 | ~~**天気API障害**~~ | ~~P0~~ | ✅ **解決済み (2026-02-17)** — 根本原因: Google Weather API が日本を地理的にサポートしていない（HTTP 404）。Open-Meteo API（CC BY 4.0）をフォールバックとして実装。Cloud Run 両サービスにデプロイ済み。 |
+| BUG-002 | **買い足し手動追加失敗** | P0 | 「追加に失敗しました」エラー。Firestore セキュリティルール or API エンドポイントの問題 |
+| ARCH-001 | **Memory 永続化** | P1 | `InMemoryMemoryService` → Firestore ベースに移行。コンテナ再起動耐性 |
+| UX-001 | **レシピ一覧UIの統一** | P2 | レシピ一覧と在庫一覧のUI（フィルタ/ソート/グリッド・リスト切替）を統一 |
+| UX-002 | **プレビュー画像の同時生成** | P2 | レシピ生成時にプレビュー画像も自動生成（ボタン押し不要に） |
+| UX-003 | **ブランド名オートコンプリート** | P2 | 登録済みブランド名の候補表示で表記揺れ防止 |
+
+> **詳細:** `docs/plans/backlog_and_remaining_tasks.md` を参照
+
 ### Phase 3 (Launch) 残タスク
 
 | バッチ | 内容 | 優先度 |
@@ -210,3 +230,9 @@ firestore_root/
 - VertexAiRagMemoryService (Beauty Log RAG ベース記憶)
 - カスタムドメイン設定
 - Cloud SQL への SessionDB 移行（マルチインスタンス対応）
+- チャット履歴管理（削除・リネーム・フォルダ分類）
+- ブランド/商品名オートコンプリート・バリデーション
+- 商品マスタ階層構造（メーカー > ブランド > 型番 > 品番 > 在庫）
+- 買い足し候補の登録方法を在庫登録と同じ4パターンに統一
+- AIキャラクタービジュアル（AI美容部員のアバター表示）
+- Beauty Log の Deep Research リデザイン

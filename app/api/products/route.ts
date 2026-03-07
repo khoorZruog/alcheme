@@ -6,6 +6,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import { getAuthUserId } from '@/lib/api/auth';
 import { timestampToString } from '@/lib/firebase/firestore-helpers';
 import { Timestamp } from 'firebase-admin/firestore';
+import { upsertCatalogEntry } from '@/lib/api/catalog-upsert';
 
 /** 重複チェック用キー生成 */
 function dedupeKey(brand: string, productName: string, colorCode?: string): string {
@@ -71,11 +72,16 @@ export async function POST(request: NextRequest) {
 
     // Create new product
     const now = Timestamp.now();
-    const docRef = colRef.doc();
-    await docRef.set({
+    const productFields = {
       brand, product_name, category, item_type, color_code, color_name,
       color_description, texture, stats, rarity, pao_months, price,
       product_url, image_url, rakuten_image_url, source, confidence,
+    };
+    const catalogId = await upsertCatalogEntry(productFields).catch(() => '');
+    const docRef = colRef.doc();
+    await docRef.set({
+      ...productFields,
+      ...(catalogId ? { catalog_id: catalogId } : {}),
       created_at: now, updated_at: now,
     });
 

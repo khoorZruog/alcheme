@@ -11,6 +11,8 @@ import type {
   GridEntry,
 } from "@/types/inventory";
 
+export type FilterMode = "category" | "brand";
+
 export type SortOption =
   | "newest"
   | "oldest"
@@ -30,13 +32,20 @@ export const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: "color_count", label: "色数 多い順" },
 ];
 
+export type GroupMode = "grouped" | "expanded";
+
 interface UseInventoryReturn {
   items: InventoryItem[];
   isLoading: boolean;
   error: any;
   mutate: () => void;
+  filterMode: FilterMode;
+  setFilterMode: (m: FilterMode) => void;
   filter: CosmeCategory | "全て";
   setFilter: (f: CosmeCategory | "全て") => void;
+  itemTypeFilter: string | "全て";
+  setItemTypeFilter: (t: string | "全て") => void;
+  itemTypes: string[];
   searchQuery: string;
   setSearchQuery: (q: string) => void;
   sortBy: SortOption;
@@ -50,6 +59,8 @@ interface UseInventoryReturn {
   brands: string[];
   count: number;
   activeFilterCount: number;
+  groupMode: GroupMode;
+  setGroupMode: React.Dispatch<React.SetStateAction<GroupMode>>;
 }
 
 function parseRemaining(item: InventoryItem): number {
@@ -59,11 +70,35 @@ function parseRemaining(item: InventoryItem): number {
 }
 
 export function useInventory(): UseInventoryReturn {
+  const [filterMode, setFilterModeRaw] = useState<FilterMode>(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("inventory-filter-mode") as FilterMode) || "category";
+    }
+    return "category";
+  });
   const [filter, setFilter] = useState<CosmeCategory | "全て">("全て");
+  const [itemTypeFilter, setItemTypeFilter] = useState<string | "全て">("全て");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [textureFilter, setTextureFilter] = useState<CosmeTexture | "全て">("全て");
   const [brandFilter, setBrandFilter] = useState<string | "全て">("全て");
+  const [groupMode, setGroupMode] = useState<GroupMode>(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("inventory-group-mode") as GroupMode) || "grouped";
+    }
+    return "grouped";
+  });
+
+  const setFilterMode = (m: FilterMode) => {
+    setFilterModeRaw(m);
+    if (typeof window !== "undefined") localStorage.setItem("inventory-filter-mode", m);
+    if (m === "brand") {
+      setFilter("全て");
+      setItemTypeFilter("全て");
+    } else {
+      setBrandFilter("全て");
+    }
+  };
 
   const params = filter !== "全て" ? `?category=${filter}` : "";
   const { data, error, isLoading, mutate } = useSWR<{ items: InventoryItem[]; count: number }>(
@@ -78,6 +113,14 @@ export function useInventory(): UseInventoryReturn {
     const set = new Set(items.map((i) => i.brand));
     return Array.from(set).sort((a, b) => a.localeCompare(b, "ja"));
   }, [items]);
+
+  // Dynamic item_type list for Level 2 chips (within selected category)
+  const itemTypes = useMemo(() => {
+    if (filterMode !== "category" || filter === "全て") return [];
+    const categoryItems = items.filter((i) => i.category === filter);
+    const set = new Set(categoryItems.map((i) => i.item_type).filter(Boolean));
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "ja"));
+  }, [items, filter, filterMode]);
 
   const filteredItems = useMemo(() => {
     let result = items;
@@ -105,6 +148,11 @@ export function useInventory(): UseInventoryReturn {
       result = result.filter((item) => item.brand === brandFilter);
     }
 
+    // Item type filter (Level 2, category mode only)
+    if (filterMode === "category" && itemTypeFilter !== "全て") {
+      result = result.filter((item) => item.item_type === itemTypeFilter);
+    }
+
     // Sort
     if (sortBy !== "newest") {
       result = [...result].sort((a, b) => {
@@ -126,11 +174,35 @@ export function useInventory(): UseInventoryReturn {
     }
 
     return result;
-  }, [items, searchQuery, textureFilter, brandFilter, sortBy]);
+  }, [items, searchQuery, textureFilter, brandFilter, itemTypeFilter, filterMode, sortBy]);
 
-  // Build grid entries with grouping
+  // Build grid entries with grouping (or flat in expanded mode)
   const gridEntries = useMemo(() => {
-    // Group by brand::product_name
+    // Expanded mode: no grouping, all items as individual cards
+    if (groupMode === "expanded") {
+      const sorted = [...filteredItems];
+      sorted.sort((a, b) => {
+        switch (sortBy) {
+          case "oldest":
+            return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+          case "brand":
+            return a.brand.localeCompare(b.brand, "ja");
+          case "product_name":
+            return a.product_name.localeCompare(b.product_name, "ja");
+          case "remaining_asc":
+            return parseRemaining(a) - parseRemaining(b);
+          case "remaining_desc":
+            return parseRemaining(b) - parseRemaining(a);
+          case "color_count":
+            return 0; // Not meaningful for individual items
+          default: // newest
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        }
+      });
+      return sorted.map((item): GridEntry => ({ type: "single", item }));
+    }
+
+    // Grouped mode: group by brand::product_name
     const groupMap = new Map<string, InventoryItem[]>();
     for (const item of filteredItems) {
       const key = `${item.brand}::${item.product_name}`;
@@ -201,12 +273,13 @@ export function useInventory(): UseInventoryReturn {
     });
 
     return entries;
-  }, [filteredItems, sortBy]);
+  }, [filteredItems, sortBy, groupMode]);
 
   // Count active filters (excluding defaults)
   const activeFilterCount =
     (textureFilter !== "全て" ? 1 : 0) +
-    (brandFilter !== "全て" ? 1 : 0) +
+    (filterMode === "category" && brandFilter !== "全て" ? 1 : 0) +
+    (filterMode === "category" && itemTypeFilter !== "全て" ? 1 : 0) +
     (sortBy !== "newest" ? 1 : 0);
 
   return {
@@ -214,8 +287,13 @@ export function useInventory(): UseInventoryReturn {
     isLoading,
     error,
     mutate: () => mutate(),
+    filterMode,
+    setFilterMode,
     filter,
     setFilter,
+    itemTypeFilter,
+    setItemTypeFilter,
+    itemTypes,
     searchQuery,
     setSearchQuery,
     sortBy,
@@ -229,5 +307,7 @@ export function useInventory(): UseInventoryReturn {
     brands,
     count: data?.count ?? 0,
     activeFilterCount,
+    groupMode,
+    setGroupMode,
   };
 }

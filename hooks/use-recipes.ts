@@ -6,6 +6,15 @@ import { fetcher } from "@/lib/api/fetcher";
 import type { Recipe } from "@/types/recipe";
 
 export type RecipeSortOption = "newest" | "oldest" | "match_score" | "name" | "steps";
+export type MatchScoreFilter = "all" | "high" | "medium" | "low";
+export type ThemeStatusFilter = "all" | "liked" | "skipped" | "with_recipe";
+
+export const MATCH_SCORE_FILTER_OPTIONS: { value: MatchScoreFilter; label: string }[] = [
+  { value: "all", label: "すべて" },
+  { value: "high", label: "80%以上" },
+  { value: "medium", label: "50%以上" },
+  { value: "low", label: "50%未満" },
+];
 
 export const RECIPE_SORT_OPTIONS: { value: RecipeSortOption; label: string }[] = [
   { value: "newest", label: "新しい順" },
@@ -26,6 +35,8 @@ export function useRecipes() {
   const [favoriteOnly, setFavoriteOnly] = useState(false);
   const [occasionFilter, setOccasionFilter] = useState<string>("全て");
   const [itemFilter, setItemFilter] = useState<string>("全て");
+  const [matchScoreFilter, setMatchScoreFilter] = useState<MatchScoreFilter>("all");
+  const [themeStatusFilter, setThemeStatusFilter] = useState<ThemeStatusFilter>("all");
 
   const allRecipes = data?.recipes ?? [];
 
@@ -65,7 +76,9 @@ export function useRecipes() {
         const stepMatch = r.steps?.some(
           (s) => s.item_name?.toLowerCase().includes(q) || s.area?.toLowerCase().includes(q)
         );
-        return nameMatch || requestMatch || stepMatch;
+        const themeMatch = r.theme_title?.toLowerCase().includes(q);
+        const keywordMatch = r.style_keywords?.some((kw) => kw.toLowerCase().includes(q));
+        return nameMatch || requestMatch || stepMatch || themeMatch || keywordMatch;
       });
     }
 
@@ -83,8 +96,31 @@ export function useRecipes() {
       );
     }
 
+    if (matchScoreFilter !== "all") {
+      result = result.filter((r) => {
+        const score = r.match_score ?? 0;
+        switch (matchScoreFilter) {
+          case "high": return score >= 80;
+          case "medium": return score >= 50;
+          case "low": return score < 50;
+          default: return true;
+        }
+      });
+    }
+
+    if (themeStatusFilter !== "all") {
+      result = result.filter((r) => {
+        switch (themeStatusFilter) {
+          case "with_recipe": return r.source !== "theme";
+          case "liked": return r.theme_status === "liked" && r.source === "theme";
+          case "skipped": return r.theme_status === "skipped";
+          default: return true;
+        }
+      });
+    }
+
     return result;
-  }, [allRecipes, searchQuery, favoriteOnly, occasionFilter, itemFilter]);
+  }, [allRecipes, searchQuery, favoriteOnly, occasionFilter, itemFilter, matchScoreFilter, themeStatusFilter]);
 
   // Sort
   const sorted = useMemo(() => {
@@ -115,8 +151,10 @@ export function useRecipes() {
     if (favoriteOnly) count++;
     if (occasionFilter !== "全て") count++;
     if (itemFilter !== "全て") count++;
+    if (matchScoreFilter !== "all") count++;
+    if (themeStatusFilter !== "all") count++;
     return count;
-  }, [sortBy, favoriteOnly, occasionFilter, itemFilter]);
+  }, [sortBy, favoriteOnly, occasionFilter, itemFilter, matchScoreFilter, themeStatusFilter]);
 
   return {
     recipes: sorted,
@@ -132,6 +170,8 @@ export function useRecipes() {
     occasions,
     itemFilter, setItemFilter,
     usedItems,
+    matchScoreFilter, setMatchScoreFilter,
+    themeStatusFilter, setThemeStatusFilter,
     activeFilterCount,
   };
 }

@@ -46,10 +46,44 @@ export const CONCERN_TAGS = [
 
 export const MAX_TAGS = 5;
 
+export const HAIR_STYLES = [
+  { value: "very-short", label: "ベリーショート" },
+  { value: "short", label: "ショート" },
+  { value: "bob", label: "ボブ" },
+  { value: "medium", label: "ミディアム" },
+  { value: "semi-long", label: "セミロング" },
+  { value: "long", label: "ロング" },
+];
+
+export const HAIR_COLORS = [
+  { value: "black", label: "黒" },
+  { value: "dark-brown", label: "ダークブラウン" },
+  { value: "brown", label: "ブラウン" },
+  { value: "light-brown", label: "ライトブラウン" },
+  { value: "ash", label: "アッシュ" },
+  { value: "blonde", label: "ブロンド" },
+  { value: "pink", label: "ピンク" },
+  { value: "red", label: "レッド" },
+];
+
 export const AGENT_THEMES = [
   { value: "bestfriend" as const, label: "親友系", desc: "気さくなトーンでアドバイス" },
   { value: "kpop" as const, label: "K-POP系", desc: "トレンド重視のスタイリスト" },
   { value: "maid" as const, label: "メイドさん", desc: "丁寧でかわいい口調" },
+];
+
+export const LOCATIONS = [
+  { value: "東京", label: "東京" },
+  { value: "大阪", label: "大阪" },
+  { value: "名古屋", label: "名古屋" },
+  { value: "福岡", label: "福岡" },
+  { value: "札幌", label: "札幌" },
+  { value: "横浜", label: "横浜" },
+  { value: "神戸", label: "神戸" },
+  { value: "京都", label: "京都" },
+  { value: "仙台", label: "仙台" },
+  { value: "広島", label: "広島" },
+  { value: "那覇", label: "那覇" },
 ];
 
 /** 旧テキスト値 → 新value形式のマイグレーションマップ */

@@ -132,7 +132,7 @@ pip install -e ".[dev]"
 
 # 環境変数を設定
 cp .env.example .env
-# .env に Google Cloud / 楽天 / OpenWeatherMap の設定を記入
+# .env に Google Cloud / 楽天 / Weather API の設定を記入
 
 # サーバー起動
 python server.py
@@ -173,7 +173,7 @@ adk web alcheme
 | `GOOGLE_CLOUD_LOCATION` | GCP Region (default: `asia-northeast1`) |
 | `RAKUTEN_APP_ID` | 楽天 Web Service App ID |
 | `SESSION_DB_URL` | セッションDB URL (default: `sqlite+aiosqlite:///sessions.db`) |
-| `OPENWEATHERMAP_API_KEY` | OpenWeatherMap API Key |
+| `GOOGLE_WEATHER_API_KEY` | Google Weather API Key（日本未対応のため Open-Meteo にフォールバック。Open-Meteo は API キー不要、CC BY 4.0） |
 | `GCS_PREVIEW_BUCKET` | Cloud Storage bucket for preview images |
 | `SIMULATOR_MODEL` | 画像生成モデル (default: `gemini-2.0-flash-exp`) |
 

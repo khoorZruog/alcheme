@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { User } from "lucide-react";
 
 interface ProfileHeroProps {
@@ -10,6 +11,7 @@ interface ProfileHeroProps {
     follower_count: number;
     total_likes: number;
   };
+  userId?: string;
 }
 
 function formatCount(n: number): string {
@@ -18,7 +20,7 @@ function formatCount(n: number): string {
   return String(n);
 }
 
-export function ProfileHero({ photoUrl, displayName, stats }: ProfileHeroProps) {
+export function ProfileHero({ photoUrl, displayName, stats, userId }: ProfileHeroProps) {
   return (
     <div className="flex items-start gap-4 px-4">
       {/* Avatar */}
@@ -45,8 +47,16 @@ export function ProfileHero({ photoUrl, displayName, stats }: ProfileHeroProps) 
           {displayName || "ユーザー"}
         </h2>
         <div className="flex items-center gap-4 mt-2">
-          <StatItem count={stats.following_count} label="フォロー" />
-          <StatItem count={stats.follower_count} label="フォロワー" />
+          <StatItem
+            count={stats.following_count}
+            label="フォロー"
+            href={userId ? `/social/${userId}/following` : undefined}
+          />
+          <StatItem
+            count={stats.follower_count}
+            label="フォロワー"
+            href={userId ? `/social/${userId}/followers` : undefined}
+          />
           <StatItem count={stats.total_likes} label="いいね・保存" />
         </div>
       </div>
@@ -54,11 +64,20 @@ export function ProfileHero({ photoUrl, displayName, stats }: ProfileHeroProps) 
   );
 }
 
-function StatItem({ count, label }: { count: number; label: string }) {
-  return (
+function StatItem({ count, label, href }: { count: number; label: string; href?: string }) {
+  const content = (
     <div className="text-center">
       <p className="text-sm font-bold text-text-ink">{formatCount(count)}</p>
       <p className="text-[10px] text-text-muted">{label}</p>
     </div>
   );
+
+  if (href) {
+    return (
+      <Link href={href} className="btn-squishy hover:opacity-70 transition-opacity">
+        {content}
+      </Link>
+    );
+  }
+  return content;
 }

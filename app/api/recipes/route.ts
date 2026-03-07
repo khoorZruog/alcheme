@@ -43,11 +43,18 @@ export async function GET(request: NextRequest) {
 
     // Filter by item_id if provided
     const itemId = request.nextUrl.searchParams.get('item_id');
-    const filtered = itemId
-      ? recipes.filter((r: any) =>
-          (r.steps as any[])?.some((s: any) => s.item_id === itemId)
-        )
-      : recipes;
+    // Filter by source (e.g. ?source=theme for theme-only entries)
+    const sourceFilter = request.nextUrl.searchParams.get('source');
+
+    let filtered = recipes;
+    if (itemId) {
+      filtered = filtered.filter((r: any) =>
+        (r.steps as any[])?.some((s: any) => s.item_id === itemId)
+      );
+    }
+    if (sourceFilter) {
+      filtered = filtered.filter((r: any) => r.source === sourceFilter);
+    }
 
     return NextResponse.json({ recipes: filtered, count: filtered.length });
   } catch (error) {

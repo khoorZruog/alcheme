@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
-  Sparkles, LayoutGrid, BookOpen, ShoppingBag, CalendarHeart,
-  Newspaper, Settings, User, LogOut,
+  Sparkles, LayoutGrid, BookOpen, CalendarHeart,
+  Settings, User, LogOut,
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
@@ -18,15 +18,14 @@ interface SideMenuProps {
 
 const MAIN_MENU = [
   { icon: Sparkles, label: "AI美容部員", href: "/chat" },
-  { icon: LayoutGrid, label: "コスメ", href: "/inventory" },
+  { icon: LayoutGrid, label: "My Cosme", href: "/inventory" },
   { icon: BookOpen, label: "レシピ", href: "/recipes" },
-  { icon: ShoppingBag, label: "買い足し", href: "/suggestions" },
   { icon: CalendarHeart, label: "メイク日記", href: "/beauty-log" },
 ] as const;
 
 const SUB_MENU = [
-  { icon: Newspaper, label: "フィード", href: "/feed" },
-  { icon: User, label: "プロフィール", href: "/profile" },
+  { icon: User, label: "マイページ", href: "/mypage" },
+  { icon: BookOpen, label: "レシピ一覧", href: "/recipes" },
   { icon: Settings, label: "設定", href: "/settings" },
 ] as const;
 

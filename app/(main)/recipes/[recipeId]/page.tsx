@@ -2,12 +2,13 @@
 
 import { use, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { ChevronDown, ChevronUp, Brain, Lightbulb, Share2, Globe, Trash2, Heart, CalendarHeart, ImagePlus } from "lucide-react";
+import { ChevronDown, ChevronUp, Brain, Lightbulb, Share2, Globe, Trash2, Heart, CalendarHeart, ImagePlus, Check, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import useSWR from "swr";
 import { PageHeader } from "@/components/page-header";
 import { RecipeStepCard } from "@/components/recipe-step-card";
 import { RecipeFeedback } from "@/components/recipe-feedback";
+import { ScoreInfoPopover } from "@/components/score-info-popover";
 import { DetailSkeleton } from "@/components/loading-skeleton";
 import { useRecipe } from "@/hooks/use-recipe";
 import { fetcher } from "@/lib/api/fetcher";
@@ -45,9 +46,17 @@ export default function RecipeDetailPage({ params }: { params: Promise<{ recipeI
         color_code: step.color_code ?? item.color_code,
         color_name: step.color_name ?? item.color_name,
         brand: step.brand ?? item.brand,
+        image_url: step.image_url ?? item.image_url ?? item.rakuten_image_url,
       };
     });
   }, [recipe?.steps, inventoryData?.items]);
+
+  // Substitution summary counts
+  const substitutionSummary = useMemo(() => {
+    const owned = enrichedSteps.filter((s) => s.item_id && !s.substitution_note).length;
+    const substitute = enrichedSteps.filter((s) => !!s.substitution_note).length;
+    return { owned, substitute, total: enrichedSteps.length };
+  }, [enrichedSteps]);
 
   const [thinkingOpen, setThinkingOpen] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -166,206 +175,241 @@ export default function RecipeDetailPage({ params }: { params: Promise<{ recipeI
     <div>
       <PageHeader title="レシピ詳細" backHref="/recipes" />
 
-      <div className="px-4 py-4 space-y-6">
-        {/* Title & Meta */}
-        <div className="space-y-2">
-          <div className="flex items-start justify-between gap-2">
-            <h2 className="text-lg font-display font-bold text-alcheme-charcoal">
-              {recipe.recipe_name}
-            </h2>
-            <button
-              onClick={toggleFavorite}
-              className="p-2 -mr-2 -mt-1 btn-squishy"
-              aria-label={recipe.is_favorite ? "お気に入りを解除" : "お気に入りに追加"}
-            >
-              <Heart
-                className={cn(
-                  "h-6 w-6 transition-colors",
-                  recipe.is_favorite
-                    ? "fill-alcheme-rose text-alcheme-rose"
-                    : "text-gray-300"
+      <div className="px-4 py-4 lg:px-8 lg:py-6">
+        <div className="lg:grid lg:grid-cols-[400px_1fr] lg:gap-8 lg:max-w-5xl lg:mx-auto space-y-6 lg:space-y-0">
+          {/* Left column: Title + Image + Meta (sticky on desktop) */}
+          <div className="space-y-6 lg:sticky lg:top-20 lg:self-start">
+            {/* Title & Meta */}
+            <div className="space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <h2 className="text-lg font-display font-bold text-alcheme-charcoal">
+                  {recipe.recipe_name}
+                </h2>
+                <button
+                  onClick={toggleFavorite}
+                  className="p-2 -mr-2 -mt-1 btn-squishy"
+                  aria-label={recipe.is_favorite ? "お気に入りを解除" : "お気に入りに追加"}
+                >
+                  <Heart
+                    className={cn(
+                      "h-6 w-6 transition-colors",
+                      recipe.is_favorite
+                        ? "fill-alcheme-rose text-alcheme-rose"
+                        : "text-gray-300"
+                    )}
+                  />
+                </button>
+              </div>
+              <p className="text-sm text-alcheme-muted">{recipe.user_request}</p>
+              <div className="flex items-center gap-3 text-xs text-alcheme-muted">
+                {recipe.match_score != null && (
+                  <span className={`font-medium inline-flex items-center gap-1 ${
+                    recipe.match_score >= 80 ? "text-green-600" : recipe.match_score >= 50 ? "text-amber-600" : "text-red-500"
+                  }`}>
+                    再現度 {recipe.match_score}%
+                    <ScoreInfoPopover />
+                  </span>
                 )}
-              />
-            </button>
-          </div>
-          <p className="text-sm text-alcheme-muted">{recipe.user_request}</p>
-          <div className="flex items-center gap-3 text-xs text-alcheme-muted">
-            {recipe.match_score != null && (
-              <span className="text-alcheme-gold font-medium">
-                再現度 {recipe.match_score}%
-              </span>
-            )}
-            <span>{(recipe.steps?.length ?? 0)}ステップ</span>
-            <span>{new Date(recipe.created_at).toLocaleDateString("ja-JP")}</span>
-          </div>
-          {recipe.context && (
-            <div className="flex flex-wrap gap-2 mt-1">
-              {recipe.context.occasion && (
-                <span className="text-xs bg-alcheme-blush text-alcheme-rose px-2 py-0.5 rounded-full">
-                  {recipe.context.occasion}
-                </span>
+                <span>{(recipe.steps?.length ?? 0)}ステップ</span>
+                <span>{new Date(recipe.created_at).toLocaleDateString("ja-JP")}</span>
+              </div>
+              {recipe.context && (
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {recipe.context.occasion && (
+                    <span className="text-xs bg-alcheme-blush text-alcheme-rose px-2 py-0.5 rounded-full">
+                      {recipe.context.occasion}
+                    </span>
+                  )}
+                  {recipe.context.weather && (
+                    <span className="text-xs bg-alcheme-sand text-alcheme-charcoal px-2 py-0.5 rounded-full">
+                      {recipe.context.weather}
+                    </span>
+                  )}
+                </div>
               )}
-              {recipe.context.weather && (
-                <span className="text-xs bg-alcheme-sand text-alcheme-charcoal px-2 py-0.5 rounded-full">
-                  {recipe.context.weather}
-                </span>
-              )}
-            </div>
-          )}
 
-          {/* Publish & Delete buttons */}
-          <div className="flex items-center gap-2 pt-1">
-            {(recipe as any).published_post_id ? (
-              <button
-                onClick={handleUnpublish}
-                disabled={publishing}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-alcheme-sand text-xs text-alcheme-charcoal hover:bg-alcheme-sand/80 transition-colors btn-squishy disabled:opacity-50"
-              >
-                <Globe size={14} />
-                <span>公開中</span>
-              </button>
+              {/* Publish & Delete buttons */}
+              <div className="flex items-center gap-2 pt-1">
+                {(recipe as any).published_post_id ? (
+                  <button
+                    onClick={handleUnpublish}
+                    disabled={publishing}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-alcheme-sand text-xs text-alcheme-charcoal hover:bg-alcheme-sand/80 transition-colors btn-squishy disabled:opacity-50"
+                  >
+                    <Globe size={14} />
+                    <span>公開中</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={handlePublish}
+                    disabled={publishing}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-neon-accent to-magic-pink text-xs text-white hover:opacity-90 transition-opacity btn-squishy disabled:opacity-50"
+                  >
+                    <Share2 size={14} />
+                    <span>フィードに公開</span>
+                  </button>
+                )}
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-50 text-xs text-red-500 hover:bg-red-100 transition-colors btn-squishy disabled:opacity-50"
+                >
+                  <Trash2 size={14} />
+                  <span>{deleting ? "削除中..." : "削除"}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Preview Image */}
+            {recipe.preview_image_url ? (
+              <div className="rounded-card overflow-hidden border border-alcheme-sand">
+                <img
+                  src={recipe.preview_image_url}
+                  alt={`${recipe.recipe_name} プレビュー`}
+                  className="w-full object-cover lg:max-h-[500px]"
+                />
+                {recipe.character_theme && (
+                  <div className="px-3 py-2 bg-alcheme-sand/30 text-xs text-alcheme-muted text-center">
+                    テーマ: {recipe.character_theme === "cute" ? "キュート" : recipe.character_theme === "cool" ? "クール" : "エレガント"}
+                  </div>
+                )}
+              </div>
             ) : (
               <button
-                onClick={handlePublish}
-                disabled={publishing}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-neon-accent to-magic-pink text-xs text-white hover:opacity-90 transition-opacity btn-squishy disabled:opacity-50"
+                onClick={handleGenerateImage}
+                disabled={generatingImage}
+                className="w-full flex items-center justify-center gap-2 py-4 rounded-card border-2 border-dashed border-gray-200 text-sm text-text-muted hover:border-neon-accent hover:text-neon-accent transition-colors btn-squishy disabled:opacity-50"
               >
-                <Share2 size={14} />
-                <span>フィードに公開</span>
+                <ImagePlus className="h-5 w-5" />
+                {generatingImage ? "画像を生成中..." : "イメージ画像を生成"}
               </button>
             )}
-            <button
-              onClick={handleDelete}
-              disabled={deleting}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-50 text-xs text-red-500 hover:bg-red-100 transition-colors btn-squishy disabled:opacity-50"
-            >
-              <Trash2 size={14} />
-              <span>{deleting ? "削除中..." : "削除"}</span>
-            </button>
-          </div>
-        </div>
 
-        {/* Preview Image */}
-        {recipe.preview_image_url ? (
-          <div className="rounded-card overflow-hidden border border-alcheme-sand">
-            <img
-              src={recipe.preview_image_url}
-              alt={`${recipe.recipe_name} プレビュー`}
-              className="w-full object-cover"
-            />
-            {recipe.character_theme && (
-              <div className="px-3 py-2 bg-alcheme-sand/30 text-xs text-alcheme-muted text-center">
-                テーマ: {recipe.character_theme === "cute" ? "キュート" : recipe.character_theme === "cool" ? "クール" : "エレガント"}
-              </div>
-            )}
-          </div>
-        ) : (
-          <button
-            onClick={handleGenerateImage}
-            disabled={generatingImage}
-            className="w-full flex items-center justify-center gap-2 py-4 rounded-card border-2 border-dashed border-gray-200 text-sm text-text-muted hover:border-neon-accent hover:text-neon-accent transition-colors btn-squishy disabled:opacity-50"
-          >
-            <ImagePlus className="h-5 w-5" />
-            {generatingImage ? "画像を生成中..." : "イメージ画像を生成"}
-          </button>
-        )}
-
-        {/* Thinking Process (collapsible) */}
-        {recipe.thinking_process && recipe.thinking_process.length > 0 && (
-          <div className="rounded-card border border-alcheme-sand">
-            <button
-              onClick={() => setThinkingOpen(!thinkingOpen)}
-              className="flex w-full items-center justify-between p-3 text-sm font-medium text-alcheme-charcoal"
-            >
-              <span className="flex items-center gap-2">
-                <Brain className="h-4 w-4 text-alcheme-gold" />
-                AIの思考プロセス
-              </span>
-              {thinkingOpen ? (
-                <ChevronUp className="h-4 w-4 text-alcheme-muted" />
-              ) : (
-                <ChevronDown className="h-4 w-4 text-alcheme-muted" />
-              )}
-            </button>
-            {thinkingOpen && (
-              <div className="border-t border-alcheme-sand px-3 py-3 space-y-2">
-                {recipe.thinking_process.map((thought, i) => (
-                  <p key={i} className="text-xs text-alcheme-muted leading-relaxed">
-                    {thought}
-                  </p>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Steps */}
-        {enrichedSteps.length > 0 && (
-          <div>
-            <p className="text-sm font-medium text-alcheme-charcoal mb-4">ステップ</p>
-            <div>
-              {enrichedSteps.map((step, i) => (
-                <RecipeStepCard key={i} step={step} stepNumber={i + 1} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Pro Tips */}
-        {recipe.pro_tips && recipe.pro_tips.length > 0 && (
-          <div className="rounded-card bg-alcheme-sand/50 p-4 space-y-2">
-            <p className="flex items-center gap-2 text-sm font-medium text-alcheme-charcoal">
-              <Lightbulb className="h-4 w-4 text-alcheme-gold" />
-              プロのコツ
-            </p>
-            <ul className="space-y-1">
-              {recipe.pro_tips.map((tip, i) => (
-                <li key={i} className="text-xs text-alcheme-muted leading-relaxed">
-                  • {tip}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {/* Usage History */}
-        <div>
-          <p className="flex items-center gap-2 text-sm font-medium text-alcheme-charcoal mb-3">
-            <CalendarHeart className="h-4 w-4 text-alcheme-gold" />
-            使用履歴
-          </p>
-          {usageLogs.length === 0 ? (
-            <p className="text-xs text-alcheme-muted">まだ使用されていません</p>
-          ) : (
-            <div className="flex gap-2 overflow-x-auto pb-2">
-              {usageLogs.map((log) => (
-                <Link
-                  key={log.id}
-                  href={`/beauty-log/${log.id}`}
-                  className="flex-shrink-0 w-24 rounded-xl bg-white p-3 text-center hover:shadow-md transition-shadow btn-squishy"
+            {/* Thinking Process (collapsible) */}
+            {recipe.thinking_process && recipe.thinking_process.length > 0 && (
+              <div className="rounded-card border border-alcheme-sand">
+                <button
+                  onClick={() => setThinkingOpen(!thinkingOpen)}
+                  className="flex w-full items-center justify-between p-3 text-sm font-medium text-alcheme-charcoal"
                 >
-                  <p className="text-xs font-bold text-alcheme-charcoal">
-                    {new Date(log.date + "T00:00:00").toLocaleDateString("ja-JP", { month: "short", day: "numeric" })}
-                  </p>
-                  {log.mood && (
-                    <p className="text-sm mt-0.5">{MOOD_EMOJI[log.mood] ?? "💄"}</p>
+                  <span className="flex items-center gap-2">
+                    <Brain className="h-4 w-4 text-alcheme-gold" />
+                    AIの思考プロセス
+                  </span>
+                  {thinkingOpen ? (
+                    <ChevronUp className="h-4 w-4 text-alcheme-muted" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-alcheme-muted" />
                   )}
-                  {log.self_rating && (
-                    <p className="text-[10px] text-alcheme-gold mt-0.5">
-                      {"★".repeat(log.self_rating)}
-                    </p>
-                  )}
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
+                </button>
+                {thinkingOpen && (
+                  <div className="border-t border-alcheme-sand px-3 py-3 space-y-2">
+                    {recipe.thinking_process.map((thought, i) => (
+                      <p key={i} className="text-xs text-alcheme-muted leading-relaxed">
+                        {thought}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
-        {/* Feedback */}
-        <RecipeFeedback
-          currentRating={recipe.feedback?.user_rating}
-          onSubmit={submitFeedback}
-        />
+          {/* Right column: Steps + Tips + Usage + Feedback */}
+          <div className="space-y-6">
+            {/* Substitution Summary */}
+            {enrichedSteps.length > 0 && (
+              <div className="flex items-center gap-3 text-xs">
+                <span className="inline-flex items-center gap-1 text-green-700">
+                  <Check className="h-3 w-3" />
+                  手持ち {substitutionSummary.owned}品
+                </span>
+                {substitutionSummary.substitute > 0 && (
+                  <span className="inline-flex items-center gap-1 text-alcheme-warning">
+                    <RefreshCw className="h-3 w-3" />
+                    代用 {substitutionSummary.substitute}品
+                  </span>
+                )}
+                <span className="text-alcheme-muted">
+                  / 全{substitutionSummary.total}品
+                </span>
+              </div>
+            )}
+
+            {/* Steps */}
+            {enrichedSteps.length > 0 && (
+              <div>
+                <p className="text-sm font-medium text-alcheme-charcoal mb-4">ステップ</p>
+                <div>
+                  {enrichedSteps.map((step, i) => (
+                    <RecipeStepCard key={i} step={step} stepNumber={i + 1} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Pro Tips */}
+            {recipe.pro_tips && recipe.pro_tips.length > 0 && (
+              <div className="relative rounded-card p-[1px] bg-linear-to-br from-neon-accent/30 via-magic-pink/20 to-alcheme-gold/30">
+                <div className="glass-card rounded-card p-4 space-y-3">
+                  <p className="flex items-center gap-2 text-sm font-bold text-alcheme-charcoal">
+                    <span className="w-7 h-7 rounded-full bg-linear-to-br from-neon-accent to-magic-pink flex items-center justify-center">
+                      <Lightbulb className="h-3.5 w-3.5 text-white" />
+                    </span>
+                    プロのコツ
+                  </p>
+                  <div className="space-y-2">
+                    {recipe.pro_tips.map((tip, i) => (
+                      <div key={i} className="flex gap-3 items-start">
+                        <span className="shrink-0 w-5 h-5 rounded-full bg-neon-accent/10 text-neon-accent text-xs font-bold flex items-center justify-center">{i + 1}</span>
+                        <p className="text-xs text-alcheme-muted leading-relaxed flex-1">{tip}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Usage History */}
+            <div>
+              <p className="flex items-center gap-2 text-sm font-medium text-alcheme-charcoal mb-3">
+                <CalendarHeart className="h-4 w-4 text-alcheme-gold" />
+                使用履歴
+              </p>
+              {usageLogs.length === 0 ? (
+                <p className="text-xs text-alcheme-muted">まだ使用されていません</p>
+              ) : (
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {usageLogs.map((log) => (
+                    <Link
+                      key={log.id}
+                      href={`/beauty-log/${log.id}`}
+                      className="shrink-0 w-24 rounded-xl bg-white p-3 text-center hover:shadow-md transition-shadow btn-squishy"
+                    >
+                      <p className="text-xs font-bold text-alcheme-charcoal">
+                        {new Date(log.date + "T00:00:00").toLocaleDateString("ja-JP", { month: "short", day: "numeric" })}
+                      </p>
+                      {log.mood && (
+                        <p className="text-sm mt-0.5">{MOOD_EMOJI[log.mood] ?? "💄"}</p>
+                      )}
+                      {log.self_rating && (
+                        <p className="text-[10px] text-alcheme-gold mt-0.5">
+                          {"★".repeat(log.self_rating)}
+                        </p>
+                      )}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Feedback */}
+            <RecipeFeedback
+              currentRating={recipe.feedback?.user_rating}
+              onSubmit={submitFeedback}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

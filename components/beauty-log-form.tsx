@@ -85,6 +85,8 @@ export function BeautyLogForm({
   const [mood, setMood] = useState(initialData?.mood ?? "");
   const [occasion, setOccasion] = useState(initialData?.occasion ?? "");
   const [weather, setWeather] = useState(initialData?.weather ?? "");
+  const [temp, setTemp] = useState<number | undefined>(initialData?.temp);
+  const [humidity, setHumidity] = useState<number | undefined>(initialData?.humidity);
   const [userNote, setUserNote] = useState(initialData?.user_note ?? "");
   const [photos, setPhotos] = useState<string[]>(initialData?.photos ?? []);
   const [isSaving, setIsSaving] = useState(false);
@@ -113,6 +115,12 @@ export function BeautyLogForm({
           const data = await res.json();
           if (data.weather) {
             setWeather(data.weather);
+          }
+          if (data.temp != null) {
+            setTemp(Math.round(data.temp));
+          }
+          if (data.humidity != null) {
+            setHumidity(Math.round(data.humidity));
           }
         } catch {
           // Silently fail — user can manually select
@@ -160,6 +168,8 @@ export function BeautyLogForm({
       if (mood) body.mood = mood;
       if (occasion) body.occasion = occasion;
       if (weather) body.weather = weather;
+      if (temp != null) body.temp = temp;
+      if (humidity != null) body.humidity = humidity;
       if (userNote.trim()) body.user_note = userNote.trim();
       if (photos.length > 0) body.photos = photos;
 
@@ -216,7 +226,13 @@ export function BeautyLogForm({
         </div>
         {/* Inline metadata badges */}
         <div className="flex items-center gap-2 mt-2 text-xs text-text-muted">
-          {weatherEmoji && <span>{weatherEmoji} {weather}</span>}
+          {weatherEmoji && (
+            <span>
+              {weatherEmoji} {weather}
+              {temp != null && ` ${temp}°C`}
+              {humidity != null && ` 湿度${humidity}%`}
+            </span>
+          )}
           {moodEmoji && <span>{moodEmoji} {mood}</span>}
           {occasion && (
             <span className="px-2 py-0.5 rounded-full bg-alcheme-rose/10 text-alcheme-rose">

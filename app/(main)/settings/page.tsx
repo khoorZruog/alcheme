@@ -1,6 +1,6 @@
 "use client";
 
-import { User, Palette, Heart, Sparkles, Link2, LogOut } from "lucide-react";
+import { User, Palette, Heart, Sparkles, Link2, CalendarDays, LogOut } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { PageHeader } from "@/components/page-header";
 import { ProfileRow } from "./_components/profile-row";
@@ -32,7 +32,7 @@ export default function SettingsPage() {
   const ageRange = form.birthDate ? calcAgeRange(form.birthDate) : null;
   const completionRate = calcCompletionRate(form);
 
-  const basicParts = [genderLabel(form.gender), ageRange].filter(Boolean);
+  const basicParts = [genderLabel(form.gender), ageRange, form.location].filter(Boolean);
   const beautyParts = [
     form.skinType,
     skinToneLabel(form.skinTone),
@@ -50,7 +50,7 @@ export default function SettingsPage() {
 
   return (
     <div>
-      <PageHeader title="設定" backHref="/chat" />
+      <PageHeader title="設定" backHref="/mypage" />
 
       <div className="px-4 py-4 space-y-2">
         {/* Profile Card */}
@@ -114,6 +114,13 @@ export default function SettingsPage() {
           summary={snsParts.length > 0 ? (snsParts as string[]).join(", ") : undefined}
         />
         <Separator />
+        <ProfileRow
+          icon={<CalendarDays className="h-4 w-4" />}
+          label="カレンダー連携"
+          href="/settings/edit/calendar"
+          summary={form.manualSchedule ? "手動入力あり" : undefined}
+        />
+        <Separator />
 
         <DataStatsSection inventoryCount={inventoryCount} recipeCount={recipeCount} />
         <Separator />
@@ -125,6 +132,15 @@ export default function SettingsPage() {
           <LogOut className="h-4 w-4" />
           ログアウト
         </button>
+
+        {/* Attribution */}
+        <p className="text-[10px] text-text-muted/60 text-center pt-4">
+          Weather data by{" "}
+          <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer" className="underline">
+            Open-Meteo.com
+          </a>
+          {" "}(CC BY 4.0)
+        </p>
 
         <div className="pb-8" />
       </div>

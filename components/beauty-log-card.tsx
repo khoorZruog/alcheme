@@ -60,6 +60,7 @@ export function BeautyLogCard({ log }: { log: BeautyLogEntry }) {
                 {log.weather && (
                   <span className="text-[10px] text-alcheme-muted">
                     {log.weather}
+                    {log.temp != null && ` ${log.temp}°C`}
                   </span>
                 )}
               </div>

@@ -10,6 +10,8 @@ export interface BeautyLogEntry {
   mood?: string; // 気分 (e.g., "元気", "落ち着き")
   occasion?: string; // TPO (e.g., "仕事", "デート")
   weather?: string; // 天気
+  temp?: number; // 気温 °C (自動取得)
+  humidity?: number; // 湿度 % (自動取得)
   user_note?: string; // Free-text memo
   photos: string[]; // User-uploaded photos
   auto_tags: string[]; // Future: AI-detected tags

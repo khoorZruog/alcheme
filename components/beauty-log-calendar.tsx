@@ -5,12 +5,22 @@ import type { BeautyLogEntry } from "@/types/beauty-log";
 
 const WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
 
-const RATING_COLORS: Record<number, string> = {
-  1: "bg-gray-300",
-  2: "bg-alcheme-muted/50",
-  3: "bg-alcheme-gold/50",
-  4: "bg-alcheme-rose/50",
-  5: "bg-alcheme-rose",
+// Beauty Palette: cell background colors by rating (Daylio Year in Pixels inspired)
+const RATING_BG: Record<number, string> = {
+  1: "bg-gray-200",
+  2: "bg-gray-300",
+  3: "bg-alcheme-gold/30",
+  4: "bg-alcheme-rose/30",
+  5: "bg-alcheme-rose/60",
+};
+
+// Rating ring colors for cells with images
+const RATING_RING: Record<number, string> = {
+  1: "ring-gray-300",
+  2: "ring-gray-400",
+  3: "ring-alcheme-gold/50",
+  4: "ring-alcheme-rose/50",
+  5: "ring-alcheme-rose",
 };
 
 interface BeautyLogCalendarProps {
@@ -20,6 +30,37 @@ interface BeautyLogCalendarProps {
   onPrevMonth: () => void;
   onNextMonth: () => void;
   onDateClick: (date: string) => void;
+}
+
+function computeMonthStats(logs: BeautyLogEntry[]) {
+  if (logs.length === 0) return null;
+
+  const daysRecorded = new Set(logs.map((l) => l.date)).size;
+  const rated = logs.filter((l) => l.self_rating);
+  const avgRating =
+    rated.length > 0
+      ? Math.round((rated.reduce((s, l) => s + l.self_rating!, 0) / rated.length) * 10) / 10
+      : null;
+
+  // Best streak within the month
+  const dates = [...new Set(logs.map((l) => l.date))].sort();
+  let bestStreak = 0;
+  let streak = 0;
+  let prev = "";
+  for (const date of dates) {
+    if (prev) {
+      const prevDate = new Date(prev + "T00:00:00");
+      prevDate.setDate(prevDate.getDate() + 1);
+      const next = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, "0")}-${String(prevDate.getDate()).padStart(2, "0")}`;
+      streak = date === next ? streak + 1 : 1;
+    } else {
+      streak = 1;
+    }
+    bestStreak = Math.max(bestStreak, streak);
+    prev = date;
+  }
+
+  return { daysRecorded, avgRating, bestStreak };
 }
 
 export function BeautyLogCalendar({
@@ -72,11 +113,12 @@ export function BeautyLogCalendar({
   }, [year, month, logsByDate]);
 
   const monthLabel = `${year}年${month}月`;
+  const stats = useMemo(() => computeMonthStats(logs), [logs]);
 
   return (
     <div className="px-4">
       {/* Month navigation */}
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-1">
         <button
           onClick={onPrevMonth}
           className="p-2 text-alcheme-muted hover:text-alcheme-charcoal transition-colors"
@@ -94,6 +136,25 @@ export function BeautyLogCalendar({
         </button>
       </div>
 
+      {/* Monthly summary */}
+      {stats && (
+        <div className="flex items-center justify-center gap-3 mb-2 text-xs text-text-muted">
+          <span>
+            📝 <span className="font-medium text-text-ink">{stats.daysRecorded}</span>日記録
+          </span>
+          {stats.avgRating != null && (
+            <span>
+              ⭐ <span className="font-medium text-text-ink">{stats.avgRating}</span>
+            </span>
+          )}
+          {stats.bestStreak >= 2 && (
+            <span>
+              🔥 最長<span className="font-medium text-text-ink">{stats.bestStreak}</span>日連続
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Weekday header */}
       <div className="grid grid-cols-7 gap-1 mb-1">
         {WEEKDAY_LABELS.map((label, i) => (
@@ -108,23 +169,29 @@ export function BeautyLogCalendar({
         ))}
       </div>
 
-      {/* Calendar grid */}
+      {/* Calendar grid — Beauty Palette */}
       <div className="grid grid-cols-7 gap-1">
         {calendarDays.map((cell, i) => {
           const hasImage = cell.log?.preview_image_url;
+          const rating = cell.log?.self_rating;
+
           return (
             <button
               key={i}
               disabled={cell.day === null}
               onClick={() => cell.dateStr && onDateClick(cell.dateStr)}
-              className={`relative flex flex-col items-center justify-center rounded-lg text-xs transition-colors overflow-hidden ${
+              className={`relative flex flex-col items-center justify-center rounded-lg text-xs transition-all overflow-hidden ${
                 hasImage ? "h-14" : "h-10"
               } ${
                 cell.day === null
                   ? ""
                   : cell.isToday
-                    ? "bg-alcheme-rose/10 font-bold text-alcheme-rose"
+                    ? "ring-2 ring-neon-accent font-bold text-alcheme-rose"
                     : "hover:bg-gray-50 text-alcheme-charcoal"
+              } ${
+                cell.log && !hasImage && rating
+                  ? RATING_BG[rating] ?? ""
+                  : ""
               }`}
             >
               {cell.day !== null && (
@@ -134,7 +201,9 @@ export function BeautyLogCalendar({
                       <img
                         src={cell.log!.preview_image_url}
                         alt=""
-                        className="absolute inset-0 w-full h-full object-cover"
+                        className={`absolute inset-0 w-full h-full object-cover rounded-lg ${
+                          rating ? `ring-2 ${RATING_RING[rating] ?? ""}` : ""
+                        }`}
                       />
                       <div className="absolute inset-0 bg-black/20" />
                       <span className="relative z-10 text-white font-bold text-[11px] drop-shadow-sm">
@@ -142,16 +211,9 @@ export function BeautyLogCalendar({
                       </span>
                     </>
                   ) : (
-                    <>
-                      <span>{cell.day}</span>
-                      {cell.log && (
-                        <div
-                          className={`absolute bottom-1 w-1.5 h-1.5 rounded-full ${
-                            RATING_COLORS[cell.log.self_rating ?? 3]
-                          }`}
-                        />
-                      )}
-                    </>
+                    <span className={cell.log ? "font-medium" : ""}>
+                      {cell.day}
+                    </span>
                   )}
                 </>
               )}

@@ -120,7 +120,7 @@ def analyze_preference_history(tool_context: ToolContext) -> dict:
         try:
             recipe_docs = (
                 _recipes_ref(user_id)
-                .order_by("createdAt", direction=firestore.Query.DESCENDING)
+                .order_by("created_at", direction=firestore.Query.DESCENDING)
                 .limit(20)
                 .stream()
             )
@@ -168,7 +168,7 @@ def analyze_preference_history(tool_context: ToolContext) -> dict:
                 }
 
         # ---- Underutilized inventory ----
-        underused_items: list[str] = []
+        underused_items: list[dict] = []
         try:
             inv_docs = _inventory_ref(user_id).stream()
             for doc in inv_docs:
@@ -178,7 +178,13 @@ def analyze_preference_history(tool_context: ToolContext) -> dict:
                     brand = item.get("brand", "")
                     name = item.get("product_name", "")
                     if brand or name:
-                        underused_items.append(f"{brand} {name}".strip())
+                        underused_items.append({
+                            "id": item_id,
+                            "brand": brand,
+                            "product_name": name,
+                            "category": item.get("category", ""),
+                            "item_type": item.get("item_type", ""),
+                        })
         except Exception as e:
             logger.warning("Failed to read inventory for underused items: %s", e)
 
@@ -187,7 +193,7 @@ def analyze_preference_history(tool_context: ToolContext) -> dict:
         occasion_counts = Counter(log_occasions)
         avg_rating = round(sum(log_ratings) / len(log_ratings), 1) if log_ratings else None
 
-        return {
+        result = {
             "status": "success",
             "color_preferences": color_prefs,
             "texture_preferences": texture_prefs,
@@ -200,5 +206,26 @@ def analyze_preference_history(tool_context: ToolContext) -> dict:
             "monotony_alert": monotony_alert,
             "underused_items": underused_items[:8],
         }
+
+        # Persist preferences to Firestore for cross-session availability
+        try:
+            prefs = {k: v for k, v in result.items() if k != "status"}
+            prefs["analyzed_at"] = firestore.SERVER_TIMESTAMP
+            _get_db().collection("users").document(user_id).update(
+                {"preferences": prefs}
+            )
+            logger.info("Persisted profiler preferences for user %s", user_id)
+        except Exception as e:
+            logger.warning("Failed to persist preferences for %s: %s", user_id, e)
+
+        # Inject into current session state for immediate use by other agents
+        try:
+            tool_context.state["user:profiler_preferences"] = {
+                k: v for k, v in result.items() if k != "status"
+            }
+        except Exception:
+            pass
+
+        return result
     except Exception as e:
         return {"status": "error", "message": str(e)}

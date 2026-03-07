@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ScanLine, Search, Globe, PenLine } from "lucide-react";
+import { ScanLine, Search, Globe, PenLine, Users } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -15,6 +15,12 @@ interface AddMethodSheetProps {
 }
 
 const METHODS = [
+  {
+    icon: Users,
+    title: "みんなの登録商品から検索",
+    description: "他のユーザーが登録済みの商品を検索して素早く登録",
+    href: "/add/community",
+  },
   {
     icon: ScanLine,
     title: "スキャン鑑定",

@@ -97,4 +97,55 @@ describe("FeedPostCard", () => {
     expect(hrefs).toContain("/profile/user-1");
     expect(hrefs).toContain("/feed/post-1");
   });
+
+  it("shows follow button for non-own, non-followed posts", () => {
+    const onFollow = vi.fn();
+    render(
+      <FeedPostCard
+        post={mockPost}
+        isOwnPost={false}
+        isFollowing={false}
+        onFollow={onFollow}
+      />
+    );
+    expect(screen.getByText("フォロー")).toBeDefined();
+  });
+
+  it("hides follow button for own posts", () => {
+    render(
+      <FeedPostCard
+        post={mockPost}
+        isOwnPost={true}
+        isFollowing={false}
+        onFollow={() => {}}
+      />
+    );
+    expect(screen.queryByText("フォロー")).toBeNull();
+  });
+
+  it("hides follow button when already following", () => {
+    render(
+      <FeedPostCard
+        post={mockPost}
+        isOwnPost={false}
+        isFollowing={true}
+        onFollow={() => {}}
+      />
+    );
+    expect(screen.queryByText("フォロー")).toBeNull();
+  });
+
+  it("calls onFollow when follow button is clicked", () => {
+    const onFollow = vi.fn();
+    render(
+      <FeedPostCard
+        post={mockPost}
+        isOwnPost={false}
+        isFollowing={false}
+        onFollow={onFollow}
+      />
+    );
+    fireEvent.click(screen.getByText("フォロー"));
+    expect(onFollow).toHaveBeenCalledTimes(1);
+  });
 });

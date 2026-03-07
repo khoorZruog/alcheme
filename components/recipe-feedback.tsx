@@ -30,8 +30,8 @@ export function RecipeFeedback({ currentRating, onSubmit }: RecipeFeedbackProps)
   };
 
   return (
-    <div className="space-y-2">
-      <p className="text-sm font-medium text-alcheme-charcoal">このレシピはいかがでしたか？</p>
+    <div className="glass-card rounded-card p-4 space-y-3">
+      <p className="text-sm font-bold text-alcheme-charcoal">このレシピはいかがでしたか？</p>
       <div className="flex gap-2">
         {OPTIONS.map(({ value, icon: Icon, label, activeColor }) => (
           <button

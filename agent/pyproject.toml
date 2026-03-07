@@ -13,6 +13,10 @@ dependencies = [
     "fastapi",
     "uvicorn[standard]",
     "python-dotenv",
+    "Pillow>=10.0",
+    "rembg>=2.0",
+    "google-api-python-client",
+    "google-auth-oauthlib",
 ]
 
 [project.optional-dependencies]

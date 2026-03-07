@@ -5,6 +5,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import { getAuthUserId } from '@/lib/api/auth';
 import { Timestamp } from 'firebase-admin/firestore';
 import { ITEM_TYPE_PAO, CATEGORY_DEFAULT_ITEM_TYPE } from '@/lib/cosme-constants';
+import { upsertCatalogEntry } from '@/lib/api/catalog-upsert';
 import type { CosmeCategory } from '@/types/inventory';
 
 /** 商品フィールド */
@@ -96,7 +97,13 @@ export async function POST(request: NextRequest) {
 
       if (!productId) {
         const productDoc = productsRef.doc();
-        await productDoc.set({ ...productFields, created_at: now, updated_at: now });
+        const catalogId = await upsertCatalogEntry(productFields).catch(() => '');
+        await productDoc.set({
+          ...productFields,
+          ...(catalogId ? { catalog_id: catalogId } : {}),
+          created_at: now,
+          updated_at: now,
+        });
         productId = productDoc.id;
         productDedupeMap.set(key, productId);
       }

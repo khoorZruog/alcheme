@@ -228,7 +228,9 @@ export default function ItemDetailPage({ params }: { params: Promise<{ itemId: s
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-text-ink truncate">{recipe.recipe_name}</p>
                     <div className="flex items-center gap-2 text-[10px] text-text-muted mt-0.5">
-                      {recipe.match_score != null && <span>再現度 {recipe.match_score}%</span>}
+                      {recipe.match_score != null && <span className={
+                        recipe.match_score >= 80 ? "text-green-600" : recipe.match_score >= 50 ? "text-amber-600" : "text-red-500"
+                      }>再現度 {recipe.match_score}%</span>}
                       <span>{new Date(recipe.created_at).toLocaleDateString("ja-JP")}</span>
                       {recipe.feedback?.user_rating === "liked" && (
                         <Heart className="h-3 w-3 text-red-400 fill-current" />

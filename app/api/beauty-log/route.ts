@@ -6,6 +6,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import { getAuthUserId } from '@/lib/api/auth';
 import { timestampToString } from '@/lib/firebase/firestore-helpers';
 import { Timestamp } from 'firebase-admin/firestore';
+import { updateCatalogUsageStats } from '@/lib/api/catalog-upsert';
 
 function logsRef(userId: string) {
   return adminDb.collection('users').doc(userId).collection('beauty_logs');
@@ -37,6 +38,15 @@ export async function GET(request: NextRequest) {
         .where('date', '>=', `${month}-01`)
         .where('date', '<=', `${month}-31`);
     }
+
+    // Date range filter (for Stories Tray / Weekly Report)
+    const start = request.nextUrl.searchParams.get('start');
+    const end = request.nextUrl.searchParams.get('end');
+    if (!recipeId && !month && start && end) {
+      ref = ref
+        .where('date', '>=', start)
+        .where('date', '<=', end);
+    }
     // timeline mode: no month filter, just all logs ordered by date desc
 
     let query: FirebaseFirestore.Query = ref;
@@ -60,6 +70,8 @@ export async function GET(request: NextRequest) {
         mood: data.mood ?? undefined,
         occasion: data.occasion ?? undefined,
         weather: data.weather ?? undefined,
+        temp: data.temp ?? undefined,
+        humidity: data.humidity ?? undefined,
         user_note: data.user_note ?? undefined,
         photos: data.photos ?? [],
         auto_tags: data.auto_tags ?? [],
@@ -113,10 +125,31 @@ export async function POST(request: NextRequest) {
     if (body.mood !== undefined) logData.mood = body.mood;
     if (body.occasion !== undefined) logData.occasion = body.occasion;
     if (body.weather !== undefined) logData.weather = body.weather;
+    if (body.temp !== undefined) logData.temp = body.temp;
+    if (body.humidity !== undefined) logData.humidity = body.humidity;
     if (body.user_note !== undefined) logData.user_note = body.user_note;
     if (body.photos !== undefined) logData.photos = body.photos;
     if (body.preview_image_url !== undefined) logData.preview_image_url = body.preview_image_url;
     if (body.auto_tags !== undefined) logData.auto_tags = body.auto_tags;
+
+    // Auto-populate used_items from recipe steps if recipe_id is set and used_items not provided
+    if (body.recipe_id && !body.used_items) {
+      try {
+        const recipeDoc = await adminDb
+          .collection('users').doc(userId).collection('recipes').doc(body.recipe_id).get();
+        if (recipeDoc.exists) {
+          const steps = recipeDoc.data()?.steps ?? [];
+          const itemIds = steps
+            .map((s: { item_id?: string }) => s.item_id)
+            .filter((id: string | undefined): id is string => !!id);
+          if (itemIds.length > 0) {
+            logData.used_items = [...new Set(itemIds)];
+          }
+        }
+      } catch {
+        // Non-critical: skip auto-populate
+      }
+    }
 
     if (existing.exists) {
       await docRef.update(logData);
@@ -128,6 +161,14 @@ export async function POST(request: NextRequest) {
       logData.photos ??= [];
       logData.auto_tags ??= [];
       await docRef.set(logData);
+    }
+
+    // Fire-and-forget: update catalog use_count / rating stats
+    const finalUsedItems = (logData.used_items as string[]) ?? [];
+    if (finalUsedItems.length > 0) {
+      updateCatalogUsageStats(userId, finalUsedItems, body.self_rating).catch((err) => {
+        console.error('updateCatalogUsageStats error (non-blocking):', err);
+      });
     }
 
     return NextResponse.json({ success: true, id: date }, { status: existing.exists ? 200 : 201 });

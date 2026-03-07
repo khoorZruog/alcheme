@@ -24,7 +24,7 @@ export function RecipeCardInline({ recipe, previewImageUrl, onToggleFavorite }: 
       <div className="glass-card bg-white/70 rounded-[24px] overflow-hidden border border-white shadow-soft-float hover:shadow-card-hover transition-shadow btn-squishy">
         {/* Preview Image */}
         {previewImageUrl && (
-          <div className="relative w-full aspect-[4/3] overflow-hidden">
+          <div className="relative w-full aspect-square overflow-hidden">
             <img
               src={previewImageUrl}
               alt={`${recipe.recipe_name} プレビュー`}
@@ -38,8 +38,10 @@ export function RecipeCardInline({ recipe, previewImageUrl, onToggleFavorite }: 
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               {recipe.match_score != null && (
-                <span className="bg-neon-accent/80 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-bold text-white border border-white/20">
-                  MATCH {recipe.match_score}%
+                <span className={`backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-bold text-white border border-white/20 ${
+                  recipe.match_score >= 80 ? "bg-green-500/80" : recipe.match_score >= 50 ? "bg-amber-500/80" : "bg-red-500/80"
+                }`}>
+                  再現度 {recipe.match_score}%
                 </span>
               )}
             </div>

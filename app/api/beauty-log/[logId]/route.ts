@@ -41,6 +41,8 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
         mood: data.mood ?? undefined,
         occasion: data.occasion ?? undefined,
         weather: data.weather ?? undefined,
+        temp: data.temp ?? undefined,
+        humidity: data.humidity ?? undefined,
         user_note: data.user_note ?? undefined,
         auto_tags: data.auto_tags ?? [],
         selfie_url: data.selfie_url ?? undefined,

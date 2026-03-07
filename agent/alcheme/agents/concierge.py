@@ -12,6 +12,7 @@ from ..tools.shopping_tools import (
     compare_products_against_inventory,
 )
 from ..tools.rakuten_api import search_rakuten_api
+from ..tools.catalog_tools import search_catalog
 
 
 def create_concierge_agent(sub_agents: list) -> LlmAgent:
@@ -32,6 +33,7 @@ def create_concierge_agent(sub_agents: list) -> LlmAgent:
             search_rakuten_api,
             analyze_product_compatibility,
             compare_products_against_inventory,
+            search_catalog,
         ],
         sub_agents=sub_agents,
     )

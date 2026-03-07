@@ -102,7 +102,7 @@ export function FeedGridSkeleton({ count = 3 }: { count?: number }) {
 export function DetailSkeleton() {
   return (
     <div className="space-y-4 px-4">
-      <SkeletonBlock className="aspect-[4/3] w-full" />
+      <SkeletonBlock className="aspect-square w-full" />
       <div className="space-y-2">
         <SkeletonBlock className="h-5 w-16 rounded-full" />
         <SkeletonBlock className="h-4 w-24 rounded-full" />
