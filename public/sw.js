@@ -1,9 +1,7 @@
-// alche:me Service Worker — Cache-first for static, network-first for API
-const CACHE_NAME = "alcheme-v2";
+// alche:me Service Worker — Cache-first for static, network-first for API/navigation
+const CACHE_NAME = "alcheme-v3";
 
 const STATIC_ASSETS = [
-  "/",
-  "/chat",
   "/manifest.json",
 ];
 
@@ -29,13 +27,16 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// Fetch: network-first for API, cache-first for static
+// Fetch: network-first for API/navigation, cache-first for static
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
   // Skip non-GET requests
   if (request.method !== "GET") return;
+
+  // Always use network for navigation requests (pages may redirect)
+  if (request.mode === "navigate") return;
 
   // Network-first for API routes and SSE
   if (url.pathname.startsWith("/api/")) {
@@ -45,7 +46,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Cache-first for static assets
+  // Cache-first for static assets (JS, CSS, images)
   event.respondWith(
     caches.match(request).then((cached) => {
       if (cached) return cached;
