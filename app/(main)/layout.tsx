@@ -66,7 +66,7 @@ export default function MainLayout({
         </div>
       </SideMenuProvider>
       {!hideNav && <BottomNav />}
-      {!hideNav && <FabButton />}
+      {!hideNav && !noPadding && <FabButton />}
       <SideMenu open={sideMenuOpen} onOpenChange={setSideMenuOpen} />
     </div>
   );
