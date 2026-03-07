@@ -15,19 +15,20 @@ interface BrowsePage {
 }
 
 export function useCatalogBrowse(
-  category: CosmeCategory | null,
+  category: CosmeCategory | null | undefined,
   brand: string | null,
   sort: CatalogSortKey = "have_count",
 ) {
   const getKey = (pageIndex: number, previousPageData: BrowsePage | null) => {
-    if (!category) return null;
+    // category === undefined means "don't fetch" (e.g. search mode active)
+    if (category === undefined) return null;
     if (pageIndex > 0 && !previousPageData?.next_cursor) return null;
 
     const params = new URLSearchParams({
-      category,
       sort,
       limit: "20",
     });
+    if (category) params.set("category", category);
     if (brand) params.set("brand", brand);
     if (pageIndex > 0 && previousPageData?.next_cursor) {
       params.set("cursor", previousPageData.next_cursor);

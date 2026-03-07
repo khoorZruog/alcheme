@@ -71,6 +71,8 @@
 | [2026-03-07_FEAT-004_google-calendar.md](plans/2026-03-07_FEAT-004_google-calendar.md) | FEAT-004 Google Calendar API 連携 — OAuth 2.0 + カレンダー選択 + 手動入力 + Agent TPO Tactician 統合 |
 | [2026-03-07_UX-003_brand-suggest-dedupe.md](plans/2026-03-07_UX-003_brand-suggest-dedupe.md) | UX-003 ブランド名・商品名サジェスト + 重複検知 — AutocompleteInput + DuplicateWarning 3画面統合 |
 | [2026-03-07_UX-002_recipe-list-unification.md](plans/2026-03-07_UX-002_recipe-list-unification.md) | UX-002 レシピ一覧UIの在庫一覧UIとの統一 — glass-card + aspect-square + BulkActionBar共有 |
+| [2026-03-07_UX-004_community-page-ux.md](plans/2026-03-07_UX-004_community-page-ux.md) | UX-008 みんなのコスメ UX改善 — 詳細ビュー + ボタン改善 + 全カテゴリ + have_countバグ修正 |
+| [2026-03-07_image-processing-pipeline.md](plans/2026-03-07_image-processing-pipeline.md) | 画像加工パイプライン — スキャン自動加工 + バッチ API + 楽天リンク規約対応 |
 
 ## reference/ — 外部リファレンス・テスト
 

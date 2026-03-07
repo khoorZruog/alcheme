@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Check, Pencil, AlertTriangle } from "lucide-react";
+import { Check, Pencil, AlertTriangle, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { CategoryBadge, getCategoryBorderClass } from "@/components/category-badge";
@@ -49,6 +49,18 @@ export function AppraisalCard({ item, confirmed, onConfirm, onEdit }: AppraisalC
               sizes="56px"
               unoptimized
             />
+            {/* Rakuten badge */}
+            {!item.image_url && item.rakuten_image_url && (
+              <a
+                href={item.product_url || `https://search.rakuten.co.jp/search/mall/${encodeURIComponent(`${item.brand} ${item.product_name}`)}/`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="absolute -bottom-0.5 -right-0.5 z-10 p-0.5 rounded-full bg-black/50 text-white hover:bg-black/70 transition"
+              >
+                <ExternalLink className="h-2.5 w-2.5" />
+              </a>
+            )}
           </div>
         )}
         <div className="flex-1 space-y-1">

@@ -5,7 +5,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import { getAuthUserId } from '@/lib/api/auth';
 import { Timestamp } from 'firebase-admin/firestore';
 import { ITEM_TYPE_PAO, CATEGORY_DEFAULT_ITEM_TYPE } from '@/lib/cosme-constants';
-import { upsertCatalogEntry } from '@/lib/api/catalog-upsert';
+import { upsertCatalogEntry, triggerCatalogImageProcessing } from '@/lib/api/catalog-upsert';
 import type { CosmeCategory } from '@/types/inventory';
 
 /** 商品フィールド */
@@ -97,7 +97,17 @@ export async function POST(request: NextRequest) {
 
       if (!productId) {
         const productDoc = productsRef.doc();
-        const catalogId = await upsertCatalogEntry(productFields).catch(() => '');
+        const catalogId = await upsertCatalogEntry(productFields).catch((err) => {
+          console.error('upsertCatalogEntry failed:', err);
+          return '';
+        });
+        // Fire-and-forget: スキャン画像を AI 加工してカタログ画像に設定
+        if (catalogId && typeof productFields.image_url === 'string'
+            && productFields.image_url.startsWith('data:')) {
+          const b64 = (productFields.image_url as string).replace(/^data:[^;]+;base64,/, '');
+          triggerCatalogImageProcessing(catalogId, b64);
+        }
+
         await productDoc.set({
           ...productFields,
           ...(catalogId ? { catalog_id: catalogId } : {}),

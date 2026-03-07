@@ -15,7 +15,7 @@ import { CatalogMatchBanner } from "@/components/catalog-match-banner";
 import { useBrandSuggestions } from "@/hooks/use-brand-suggestions";
 import { useProductSuggestions } from "@/hooks/use-product-suggestions";
 import { AutocompleteInput } from "@/components/autocomplete-input";
-import { DuplicateWarning } from "@/components/duplicate-warning";
+import { DuplicateWarning, useDuplicateCheck } from "@/components/duplicate-warning";
 import { useInventory } from "@/hooks/use-inventory";
 
 interface ItemEditSheetProps {
@@ -123,6 +123,11 @@ export function ItemEditSheet({ item, open, onClose, onSave }: ItemEditSheetProp
     form.color_code,
   );
 
+  // Duplicate check for save button control
+  const duplicateType = useDuplicateCheck(form.brand, form.product_name, form.color_code, inventoryItems, item?.id);
+  const isNewItem = !item?.id;
+  const isExactDuplicate = duplicateType === "exact";
+
   const handleCatalogApply = (entry: CatalogEntry) => {
     setForm((prev) => ({
       ...prev,
@@ -167,7 +172,7 @@ export function ItemEditSheet({ item, open, onClose, onSave }: ItemEditSheetProp
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
       <SheetContent side="bottom" className="rounded-t-card max-h-[85dvh] overflow-y-auto">
         <SheetHeader>
-          <SheetTitle className="font-display">アイテムを修正</SheetTitle>
+          <SheetTitle className="font-display">{isNewItem ? "コスメを登録" : "コスメを編集"}</SheetTitle>
         </SheetHeader>
 
         <div className="mt-4 space-y-4">
@@ -176,6 +181,15 @@ export function ItemEditSheet({ item, open, onClose, onSave }: ItemEditSheetProp
             match={catalogMatch}
             isChecking={catalogChecking}
             onApply={handleCatalogApply}
+          />
+
+          {/* Duplicate warning — shown at top for visibility */}
+          <DuplicateWarning
+            brand={form.brand}
+            productName={form.product_name}
+            colorCode={form.color_code}
+            items={inventoryItems}
+            editingId={item?.id}
           />
 
           {/* Image editor */}
@@ -284,14 +298,6 @@ export function ItemEditSheet({ item, open, onClose, onSave }: ItemEditSheetProp
             <Input value={form.color_description} onChange={(e) => setForm({ ...form, color_description: e.target.value })} className="rounded-input" />
           </div>
 
-          <DuplicateWarning
-            brand={form.brand}
-            productName={form.product_name}
-            colorCode={form.color_code}
-            items={inventoryItems}
-            editingId={item?.id}
-          />
-
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-alcheme-charcoal">質感</Label>
@@ -335,8 +341,12 @@ export function ItemEditSheet({ item, open, onClose, onSave }: ItemEditSheetProp
             </div>
           </div>
 
-          <Button onClick={handleSave} className="w-full bg-alcheme-rose hover:bg-alcheme-rose/90 text-white rounded-button">
-            保存
+          <Button
+            onClick={handleSave}
+            disabled={isNewItem && isExactDuplicate}
+            className="w-full bg-alcheme-rose hover:bg-alcheme-rose/90 text-white rounded-button disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isNewItem ? "My Cosmeに追加" : "変更を保存"}
           </Button>
         </div>
       </SheetContent>

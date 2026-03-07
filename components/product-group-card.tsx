@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Package, AlertCircle, Check } from "lucide-react";
+import { Package, AlertCircle, Check, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CategoryBadge } from "@/components/category-badge";
 import type { ProductGroup } from "@/types/inventory";
@@ -73,6 +73,27 @@ export function ProductGroupCard({ group, onClick, className, selectionMode, sel
               />
               {/* Gloss overlay */}
               <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent pointer-events-none" />
+              {/* Rakuten badge */}
+              {!group.representative.image_url && group.representative.rakuten_image_url && (
+                <span
+                  role="link"
+                  tabIndex={0}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.open(
+                      `https://search.rakuten.co.jp/search/mall/${encodeURIComponent(`${group.brand} ${group.productName}`)}/`,
+                      '_blank',
+                      'noopener,noreferrer',
+                    );
+                  }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLElement).click(); }}
+                  className="absolute bottom-1.5 right-1.5 z-10 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-black/50 text-white text-[9px] font-bold cursor-pointer hover:bg-black/70 transition"
+                >
+                  <ExternalLink className="h-2.5 w-2.5" />
+                  楽天
+                </span>
+              )}
             </>
           ) : (
             <div className="flex h-full items-center justify-center">

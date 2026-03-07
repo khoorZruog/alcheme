@@ -6,16 +6,22 @@ import { Search, Loader2, Users, ChevronDown, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ItemEditSheet } from "@/components/item-edit-sheet";
+import { CatalogDetailSheet } from "@/components/catalog-detail-sheet";
 import { CatalogRankingCard } from "@/components/catalog-ranking-card";
 import { InventoryGridSkeleton } from "@/components/loading-skeleton";
 import { useCatalogSearch } from "@/hooks/use-catalog-search";
 import { useCatalogBrowse, type CatalogSortKey } from "@/hooks/use-catalog-browse";
+import { useInventory } from "@/hooks/use-inventory";
 import { cn } from "@/lib/utils";
 import type { CatalogEntry } from "@/types/catalog";
 import type { CosmeCategory, InventoryItem } from "@/types/inventory";
 
-const BROWSE_CATEGORIES: { value: CosmeCategory; label: string }[] = [
+type BrowseCategory = CosmeCategory | "全て";
+
+const BROWSE_CATEGORIES: { value: BrowseCategory; label: string }[] = [
+  { value: "全て", label: "全て" },
   { value: "ベースメイク", label: "ベースメイク" },
   { value: "アイメイク", label: "アイメイク" },
   { value: "リップ", label: "リップ" },
@@ -32,13 +38,18 @@ const SORT_OPTIONS: { value: CatalogSortKey; label: string }[] = [
 export default function CommunitySearchPage() {
   const router = useRouter();
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<CosmeCategory>("リップ");
+  const [category, setCategory] = useState<BrowseCategory>("全て");
   const [brand, setBrand] = useState<string | null>(null);
   const [sort, setSort] = useState<CatalogSortKey>("have_count");
+  const [detailEntry, setDetailEntry] = useState<CatalogEntry | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [editItem, setEditItem] = useState<InventoryItem | null>(null);
   const [editOpen, setEditOpen] = useState(false);
 
   const isSearching = query.trim().length >= 2;
+
+  // Inventory for ownership check
+  const { items: inventoryItems } = useInventory();
 
   // Search mode
   const { results: searchResults, isLoading: searchLoading } = useCatalogSearch(query);
@@ -53,7 +64,11 @@ export default function CommunitySearchPage() {
     isEmpty: browseEmpty,
     loadMore,
     mutate: mutateBrowse,
-  } = useCatalogBrowse(isSearching ? null : category, brand, sort);
+  } = useCatalogBrowse(
+    isSearching ? undefined : category === "全て" ? null : category,
+    brand,
+    sort,
+  );
 
   // Auto-backfill: when catalog is empty on first load, backfill user's products
   const backfillAttempted = useRef(false);
@@ -76,6 +91,12 @@ export default function CommunitySearchPage() {
   }, [browseLoading, browseEmpty, isSearching, mutateBrowse]);
 
   const handleSelect = useCallback((entry: CatalogEntry) => {
+    setDetailEntry(entry);
+    setDetailOpen(true);
+  }, []);
+
+  const handleRegister = useCallback((entry: CatalogEntry) => {
+    setDetailOpen(false);
     const item: InventoryItem = {
       id: "",
       category: (entry.category ?? "") as InventoryItem["category"],
@@ -101,6 +122,19 @@ export default function CommunitySearchPage() {
     setEditOpen(true);
   }, []);
 
+  const isEntryOwned = useCallback((entry: CatalogEntry | null) => {
+    if (!entry) return false;
+    const b = (entry.brand || "").toLowerCase();
+    const p = (entry.product_name || "").toLowerCase();
+    const c = (entry.color_code || "").toLowerCase();
+    return inventoryItems.some((item) => {
+      const ib = (item.brand || "").toLowerCase();
+      const ip = (item.product_name || "").toLowerCase();
+      const ic = (item.color_code || "").toLowerCase();
+      return ib === b && ip === p && (!c || !ic || ic === c);
+    });
+  }, [inventoryItems]);
+
   const handleSave = async (updates: Partial<InventoryItem>) => {
     if (!editItem) return;
     const item = { ...editItem, ...updates };
@@ -113,6 +147,7 @@ export default function CommunitySearchPage() {
       });
       if (!res.ok) throw new Error();
       toast.success("コスメを登録しました！");
+      mutateBrowse();
       router.push("/inventory");
     } catch {
       toast.error("登録に失敗しました");
@@ -143,7 +178,7 @@ export default function CommunitySearchPage() {
               {BROWSE_CATEGORIES.map((cat) => (
                 <button
                   key={cat.value}
-                  onClick={() => { setCategory(cat.value); setBrand(null); }}
+                  onClick={() => { setCategory(cat.value as BrowseCategory); setBrand(null); }}
                   className={cn(
                     "shrink-0 px-5 py-2 rounded-full text-xs font-bold transition-all border btn-squishy",
                     category === cat.value
@@ -174,35 +209,26 @@ export default function CommunitySearchPage() {
               ))}
             </div>
 
-            {/* Brand pills */}
+            {/* Brand filter */}
             {topBrands.length > 0 && (
-              <div className="flex gap-1.5 overflow-x-auto hide-scrollbar pb-1">
-                <button
-                  onClick={() => setBrand(null)}
+              <Select value={brand ?? "__all__"} onValueChange={(v) => setBrand(v === "__all__" ? null : v)}>
+                <SelectTrigger
                   className={cn(
-                    "shrink-0 px-3 py-1 rounded-full text-[10px] font-bold transition-all border",
-                    !brand
+                    "w-auto px-3 py-1.5 h-auto rounded-full text-xs font-bold border transition-all",
+                    brand
                       ? "bg-neon-accent/10 text-neon-accent border-neon-accent/30"
                       : "bg-white text-text-muted border-gray-200"
                   )}
                 >
-                  全て
-                </button>
-                {topBrands.map((b) => (
-                  <button
-                    key={b}
-                    onClick={() => setBrand(brand === b ? null : b)}
-                    className={cn(
-                      "shrink-0 px-3 py-1 rounded-full text-[10px] font-bold transition-all border",
-                      brand === b
-                        ? "bg-neon-accent/10 text-neon-accent border-neon-accent/30"
-                        : "bg-white text-text-muted border-gray-200"
-                    )}
-                  >
-                    {b}
-                  </button>
-                ))}
-              </div>
+                  <SelectValue placeholder="ブランド" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">全てのブランド</SelectItem>
+                  {topBrands.map((b) => (
+                    <SelectItem key={b} value={b}>{b}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
           </>
         )}
@@ -252,7 +278,7 @@ export default function CommunitySearchPage() {
             {!browseLoading && browseResults.length > 0 && (
               <>
                 <p className="text-xs text-text-muted">
-                  {category} ランキング — {browseResults.length}件
+                  {category === "全て" ? "全カテゴリ" : category} ランキング — {browseResults.length}件
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   {browseResults.map((entry, idx) => (
@@ -362,6 +388,14 @@ export default function CommunitySearchPage() {
           </>
         )}
       </div>
+
+      <CatalogDetailSheet
+        entry={detailEntry}
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        onRegister={handleRegister}
+        isOwned={isEntryOwned(detailEntry)}
+      />
 
       <ItemEditSheet
         item={editItem}

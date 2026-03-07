@@ -15,10 +15,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const category = request.nextUrl.searchParams.get('category');
-  if (!category) {
-    return NextResponse.json({ error: 'category is required' }, { status: 400 });
-  }
+  const category = request.nextUrl.searchParams.get('category') || null;
 
   const brand = request.nextUrl.searchParams.get('brand') || null;
   const sortParam = request.nextUrl.searchParams.get('sort') || 'have_count';
@@ -40,7 +37,10 @@ export async function GET(request: NextRequest) {
     let usedFallback = false;
 
     try {
-      let query: FirebaseFirestore.Query = catalogRef.where('category', '==', category);
+      let query: FirebaseFirestore.Query = catalogRef;
+      if (category) {
+        query = query.where('category', '==', category);
+      }
       if (brand) {
         query = query.where('brand_normalized', '==', brand.toLowerCase());
       }
@@ -71,7 +71,10 @@ export async function GET(request: NextRequest) {
       if (errMsg.includes('index') || errMsg.includes('FAILED_PRECONDITION')) {
         console.warn('Catalog browse: composite index missing, using in-memory sort. Error:', errMsg);
         usedFallback = true;
-        let fallbackQuery: FirebaseFirestore.Query = catalogRef.where('category', '==', category);
+        let fallbackQuery: FirebaseFirestore.Query = catalogRef;
+        if (category) {
+          fallbackQuery = fallbackQuery.where('category', '==', category);
+        }
         if (brand) {
           fallbackQuery = fallbackQuery.where('brand_normalized', '==', brand.toLowerCase());
         }
@@ -138,7 +141,10 @@ export async function GET(request: NextRequest) {
     if (!cursor && !brand) {
       try {
         const brandCounts = new Map<string, number>();
-        let brandQuery: FirebaseFirestore.Query = catalogRef.where('category', '==', category);
+        let brandQuery: FirebaseFirestore.Query = catalogRef;
+        if (category) {
+          brandQuery = brandQuery.where('category', '==', category);
+        }
         if (!usedFallback) {
           brandQuery = brandQuery.orderBy('have_count', 'desc');
         }

@@ -42,7 +42,7 @@ describe("DuplicateWarning", () => {
         items={[makeItem()]}
       />,
     );
-    expect(screen.getByText("この商品はすでに登録されています")).toBeDefined();
+    expect(screen.getByText("このコスメはすでにMy Cosmeに登録されています")).toBeDefined();
   });
 
   it("shows color variant message when brand+product match but color differs", () => {
@@ -55,7 +55,7 @@ describe("DuplicateWarning", () => {
       />,
     );
     expect(
-      screen.getByText("同じ商品の別カラーとして登録されます"),
+      screen.getByText("同じ商品の別カラーがMy Cosmeにあります（登録可能）"),
     ).toBeDefined();
   });
 
@@ -68,7 +68,7 @@ describe("DuplicateWarning", () => {
         items={[makeItem()]}
       />,
     );
-    expect(screen.getByText("この商品はすでに登録されています")).toBeDefined();
+    expect(screen.getByText("このコスメはすでにMy Cosmeに登録されています")).toBeDefined();
   });
 
   it("excludes editing item from check", () => {

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Package, Star } from "lucide-react";
+import { Package, Star, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CatalogEntry } from "@/types/catalog";
 
@@ -56,6 +56,27 @@ export function CatalogRankingCard({ entry, rank, onSelect }: CatalogRankingCard
               unoptimized
             />
             <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent pointer-events-none" />
+            {/* Rakuten badge */}
+            {!entry.image_url && entry.rakuten_image_url && (
+              <span
+                role="link"
+                tabIndex={0}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  window.open(
+                    entry.product_url || `https://search.rakuten.co.jp/search/mall/${encodeURIComponent(`${entry.brand} ${entry.product_name}`)}/`,
+                    '_blank',
+                    'noopener,noreferrer',
+                  );
+                }}
+                onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLElement).click(); }}
+                className="absolute bottom-1.5 right-1.5 z-10 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-black/50 text-white text-[9px] font-bold cursor-pointer hover:bg-black/70 transition"
+              >
+                <ExternalLink className="h-2.5 w-2.5" />
+                楽天
+              </span>
+            )}
           </>
         ) : (
           <div className="flex h-full items-center justify-center">
