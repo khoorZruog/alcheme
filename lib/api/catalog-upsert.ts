@@ -153,12 +153,15 @@ export async function updateCatalogUsageStats(
  * カタログ画像が未設定の場合、ユーザー提供画像を AI 加工して設定する（非同期・非ブロック）。
  *
  * 呼び出し元はこの結果を await しなくてよい（fire-and-forget）。
+ * productRef を渡すと、加工後の GCS URL で product doc の image_url も更新する。
  */
 export function triggerCatalogImageProcessing(
   catalogId: string,
   imageBase64: string,
   /** force=true で既存画像があっても上書き加工する（画像変更時） */
   force = false,
+  /** 加工後の画像 URL をこの product doc にも書き戻す */
+  productRef?: FirebaseFirestore.DocumentReference,
 ): void {
   if (!catalogId || !imageBase64) return;
 
@@ -170,7 +173,12 @@ export function triggerCatalogImageProcessing(
 
     try {
       const { callAgent } = await import('@/lib/api/agent-client');
-      await callAgent('/process-image', { image_base64: imageBase64, catalog_id: catalogId });
+      const result = await callAgent('/process-image', { image_base64: imageBase64, catalog_id: catalogId });
+
+      // 加工済み GCS URL で product doc も更新
+      if (result.image_url && productRef) {
+        await productRef.update({ image_url: result.image_url as string });
+      }
     } catch (err) {
       console.error('Catalog image processing failed (non-blocking):', err);
     }

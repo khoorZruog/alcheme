@@ -9,6 +9,7 @@ import { AppraisalEffect } from "@/components/appraisal-effect";
 import { AppraisalCard } from "@/components/appraisal-card";
 import { ProductCandidates } from "@/components/product-candidates";
 import { ItemEditSheet } from "@/components/item-edit-sheet";
+import { PhotoEditSheet } from "@/components/photo-edit-sheet";
 import type { InventoryItem } from "@/types/inventory";
 
 export default function ScanConfirmPage() {
@@ -17,6 +18,7 @@ export default function ScanConfirmPage() {
   const [confirmed, setConfirmed] = useState<Record<string, boolean>>({});
   const [showEffect, setShowEffect] = useState(true);
   const [editItem, setEditItem] = useState<InventoryItem | null>(null);
+  const [photoEditItem, setPhotoEditItem] = useState<InventoryItem | null>(null);
   const [registering, setRegistering] = useState(false);
   // Track which candidate index is selected per item (-1 = 該当なし, null = none)
   const [candidateSelection, setCandidateSelection] = useState<Record<string, number | null>>({});
@@ -56,6 +58,21 @@ export default function ScanConfirmPage() {
     );
     setConfirmed((prev) => ({ ...prev, [editItem.id]: true }));
     setEditItem(null);
+  };
+
+  const handleEditImage = (item: InventoryItem) => {
+    const displayImage = item.image_url || item.rakuten_image_url;
+    if (displayImage) {
+      setPhotoEditItem(item);
+    }
+  };
+
+  const handlePhotoEditConfirm = (confirmedUrl: string) => {
+    if (!photoEditItem) return;
+    setItems((prev) =>
+      prev.map((item) => (item.id === photoEditItem.id ? { ...item, image_url: confirmedUrl } : item))
+    );
+    setPhotoEditItem(null);
   };
 
   const handleCandidateSelect = (itemId: string, candidateIndex: number) => {
@@ -146,6 +163,7 @@ export default function ScanConfirmPage() {
               confirmed={!!confirmed[item.id]}
               onConfirm={toggleConfirm}
               onEdit={handleEdit}
+              onEditImage={handleEditImage}
             />
             {item.candidates && item.candidates.length > 0 && (
               <ProductCandidates
@@ -197,6 +215,13 @@ export default function ScanConfirmPage() {
         onClose={() => setEditItem(null)}
         onSave={handleSaveEdit}
         skipDuplicateCheck
+      />
+
+      <PhotoEditSheet
+        imageUrl={photoEditItem ? (photoEditItem.image_url || photoEditItem.rakuten_image_url || null) : null}
+        open={!!photoEditItem}
+        onClose={() => setPhotoEditItem(null)}
+        onConfirm={handlePhotoEditConfirm}
       />
     </div>
   );

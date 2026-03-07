@@ -101,13 +101,6 @@ export async function POST(request: NextRequest) {
           console.error('upsertCatalogEntry failed:', err);
           return '';
         });
-        // Fire-and-forget: スキャン画像を AI 加工してカタログ画像に設定
-        if (catalogId && typeof productFields.image_url === 'string'
-            && productFields.image_url.startsWith('data:')) {
-          const b64 = (productFields.image_url as string).replace(/^data:[^;]+;base64,/, '');
-          triggerCatalogImageProcessing(catalogId, b64);
-        }
-
         await productDoc.set({
           ...productFields,
           ...(catalogId ? { catalog_id: catalogId } : {}),
@@ -116,6 +109,13 @@ export async function POST(request: NextRequest) {
         });
         productId = productDoc.id;
         productDedupeMap.set(key, productId);
+
+        // Fire-and-forget: スキャン画像を AI 加工してカタログ + product に反映
+        if (catalogId && typeof productFields.image_url === 'string'
+            && productFields.image_url.startsWith('data:')) {
+          const b64 = (productFields.image_url as string).replace(/^data:[^;]+;base64,/, '');
+          triggerCatalogImageProcessing(catalogId, b64, false, productDoc);
+        }
       }
 
       // Create inventory instance

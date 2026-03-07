@@ -105,23 +105,21 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       }
 
       // Update product if there are product field changes
+      const productRef = adminDb
+        .collection('users').doc(userId)
+        .collection('products').doc(existingData.product_id);
+
       if (Object.keys(productUpdates).length > 0) {
-        await adminDb
-          .collection('users').doc(userId)
-          .collection('products').doc(existingData.product_id)
-          .update({ ...productUpdates, updated_at: now });
+        await productRef.update({ ...productUpdates, updated_at: now });
 
         // Fire-and-forget: AI image processing for user-uploaded photos
         if (typeof productUpdates.image_url === 'string'
             && productUpdates.image_url.startsWith('data:')) {
-          const productDoc = await adminDb
-            .collection('users').doc(userId)
-            .collection('products').doc(existingData.product_id)
-            .get();
+          const productDoc = await productRef.get();
           const catalogId = productDoc.data()?.catalog_id as string | undefined;
           if (catalogId) {
             const b64 = (productUpdates.image_url as string).replace(/^data:[^;]+;base64,/, '');
-            triggerCatalogImageProcessing(catalogId, b64, true);
+            triggerCatalogImageProcessing(catalogId, b64, true, productRef);
           }
         }
       }

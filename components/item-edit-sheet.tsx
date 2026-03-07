@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Camera, X } from "lucide-react";
+import { Camera, Pencil, X } from "lucide-react";
+import { PhotoEditSheet } from "@/components/photo-edit-sheet";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -70,6 +71,8 @@ function resizeImage(file: File, size: number): Promise<string> {
 export function ItemEditSheet({ item, open, onClose, onSave, skipDuplicateCheck }: ItemEditSheetProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
+  const [photoEditOpen, setPhotoEditOpen] = useState(false);
+  const [photoEditUrl, setPhotoEditUrl] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     category: "" as CosmeCategory,
@@ -158,8 +161,15 @@ export function ItemEditSheet({ item, open, onClose, onSave, skipDuplicateCheck 
     const file = e.target.files?.[0];
     if (!file) return;
     const dataUrl = await resizeImage(file, 1024);
-    setImageUrl(dataUrl);
+    setPhotoEditUrl(dataUrl);
+    setPhotoEditOpen(true);
     e.target.value = "";
+  };
+
+  const handlePhotoEditConfirm = (confirmedUrl: string) => {
+    setImageUrl(confirmedUrl);
+    setPhotoEditOpen(false);
+    setPhotoEditUrl(null);
   };
 
   const handleSave = () => {
@@ -203,18 +213,28 @@ export function ItemEditSheet({ item, open, onClose, onSave, skipDuplicateCheck 
             <Label className="text-alcheme-charcoal">画像</Label>
             <div className="flex items-center gap-3">
               {imageUrl ? (
-                <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-gray-50 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPhotoEditUrl(imageUrl);
+                    setPhotoEditOpen(true);
+                  }}
+                  className="relative w-20 h-20 rounded-xl overflow-hidden bg-gray-50 shrink-0 group"
+                >
                   <img src={imageUrl} alt="プレビュー" className="w-full h-full object-contain" />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                    <Pencil className="h-4 w-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
                   <button
                     type="button"
-                    onClick={() => setImageUrl(undefined)}
+                    onClick={(e) => { e.stopPropagation(); setImageUrl(undefined); }}
                     className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/50 text-white flex items-center justify-center"
                   >
                     <X className="h-3 w-3" />
                   </button>
-                </div>
+                </button>
               ) : (
-                <div className="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
+                <div className="w-20 h-20 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
                   <Camera className="h-6 w-6 text-gray-300" />
                 </div>
               )}
@@ -356,6 +376,13 @@ export function ItemEditSheet({ item, open, onClose, onSave, skipDuplicateCheck 
           </Button>
         </div>
       </SheetContent>
+
+      <PhotoEditSheet
+        imageUrl={photoEditUrl}
+        open={photoEditOpen}
+        onClose={() => { setPhotoEditOpen(false); setPhotoEditUrl(null); }}
+        onConfirm={handlePhotoEditConfirm}
+      />
     </Sheet>
   );
 }

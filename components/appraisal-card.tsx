@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Check, Pencil, AlertTriangle, ExternalLink } from "lucide-react";
+import { Check, Pencil, AlertTriangle, ExternalLink, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { CategoryBadge, getCategoryBorderClass } from "@/components/category-badge";
@@ -14,9 +14,10 @@ interface AppraisalCardProps {
   confirmed: boolean;
   onConfirm: (itemId: string) => void;
   onEdit: (item: InventoryItem) => void;
+  onEditImage?: (item: InventoryItem) => void;
 }
 
-export function AppraisalCard({ item, confirmed, onConfirm, onEdit }: AppraisalCardProps) {
+export function AppraisalCard({ item, confirmed, onConfirm, onEdit, onEditImage }: AppraisalCardProps) {
   const displayImage = item.image_url || item.rakuten_image_url;
 
   return (
@@ -38,9 +39,13 @@ export function AppraisalCard({ item, confirmed, onConfirm, onEdit }: AppraisalC
       )}
 
       <div className="flex items-start justify-between gap-2">
-        {/* Image thumbnail */}
-        {displayImage && (
-          <div className="relative w-14 h-14 rounded-lg bg-gray-50 overflow-hidden shrink-0">
+        {/* Image thumbnail — tappable for photo editing */}
+        {displayImage ? (
+          <button
+            type="button"
+            onClick={() => onEditImage?.(item)}
+            className="relative w-14 h-14 rounded-lg bg-gray-50 overflow-hidden shrink-0 group"
+          >
             <Image
               src={displayImage}
               alt={item.product_name}
@@ -49,6 +54,11 @@ export function AppraisalCard({ item, confirmed, onConfirm, onEdit }: AppraisalC
               sizes="56px"
               unoptimized
             />
+            {onEditImage && (
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                <Pencil className="h-3 w-3 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+            )}
             {/* Rakuten badge */}
             {!item.image_url && item.rakuten_image_url && (
               <a
@@ -61,8 +71,16 @@ export function AppraisalCard({ item, confirmed, onConfirm, onEdit }: AppraisalC
                 <ExternalLink className="h-2.5 w-2.5" />
               </a>
             )}
-          </div>
-        )}
+          </button>
+        ) : onEditImage ? (
+          <button
+            type="button"
+            onClick={() => onEditImage(item)}
+            className="w-14 h-14 rounded-lg bg-gray-100 flex items-center justify-center shrink-0"
+          >
+            <Camera className="h-5 w-5 text-gray-300" />
+          </button>
+        ) : null}
         <div className="flex-1 space-y-1">
           <div className="flex items-center gap-2">
             <CategoryBadge category={item.category} size="sm" />
