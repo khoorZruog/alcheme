@@ -75,6 +75,9 @@
 | [2026-03-07_image-processing-pipeline.md](plans/2026-03-07_image-processing-pipeline.md) | 画像加工パイプライン — スキャン自動加工 + バッチ API + 楽天リンク規約対応 |
 | [2026-03-07_secret-manager-migration.md](plans/2026-03-07_secret-manager-migration.md) | Secret Manager 移行 + Cloud Build トリガー自動デプロイ設定 |
 | [2026-03-07_scan-image-fix.md](plans/2026-03-07_scan-image-fix.md) | スキャン画像問題修正 — 楽天画像優先防止 + 鑑定保留中の重複警告スキップ |
+| [2026-03-07_photo-edit-sheet.md](plans/2026-03-07_photo-edit-sheet.md) | 商品画像加工フロー（PhotoEditSheet）— Instagram風4ツール編集UI + AI背景除去 |
+| [2026-03-08_NAV-001_navigation-restructure.md](plans/2026-03-08_NAV-001_navigation-restructure.md) | NAV-001 ナビゲーション再構築 — ツール→プラットフォーム転換（ボトムナビ5タブ + FAB + サイドメニュー整理） |
+| [2026-03-08_NAV-001-D_home-shortcut-grid.md](plans/2026-03-08_NAV-001-D_home-shortcut-grid.md) | NAV-001-D ホーム画面LIPS風アイコングリッド — 6ショートカット + タイトル/タブ名変更 |
 
 ## reference/ — 外部リファレンス・テスト
 
@@ -120,6 +123,7 @@ FEAT-001/002 Deep Research で作成した調査レポート群。Claude（2026-
 |---------|------|
 | [gemini_deep_research_prompt.md](research/gemini_deep_research_prompt.md) | Gemini Deep Research 統合プロンプト（初回投入用） |
 | [gemini_individual_prompts.md](research/gemini_individual_prompts.md) | Gemini 個別テーマプロンプト集（#1-11 全完了） |
+| [2026-03-08_navigation-platform-strategy.md](research/2026-03-08_navigation-platform-strategy.md) | ナビゲーション & プラットフォーム戦略リサーチ（LIPS実機分析・Agentic Commerce・バイラルループ） |
 
 ## handoff/ — 引き継ぎ資料
 

@@ -1,21 +1,26 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Plus } from "lucide-react";
+import { MainTabHeader } from "@/components/main-tab-header";
+import { InventoryWantView } from "@/app/(main)/inventory/_components/inventory-want-view";
 
 export default function SuggestionsPage() {
-  const router = useRouter();
-
-  useEffect(() => {
-    router.replace("/inventory?tab=want");
-  }, [router]);
-
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-neon-accent to-magic-pink animate-pulse" />
-        <p className="text-text-muted text-sm">リダイレクト中...</p>
-      </div>
+    <div>
+      <MainTabHeader
+        title="Next Cosme"
+        subtitle="SHOP"
+        rightElement={
+          <Link
+            href="/suggestions/add"
+            className="w-9 h-9 rounded-full bg-neon-accent/10 text-neon-accent flex items-center justify-center btn-squishy hover:bg-neon-accent/20 transition-colors"
+          >
+            <Plus size={16} />
+          </Link>
+        }
+      />
+      <InventoryWantView />
     </div>
   );
 }

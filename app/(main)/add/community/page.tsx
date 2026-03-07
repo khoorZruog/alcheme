@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Loader2, Users, ChevronDown, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { PageHeader } from "@/components/page-header";
+import { MainTabHeader } from "@/components/main-tab-header";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ItemEditSheet } from "@/components/item-edit-sheet";
@@ -156,7 +156,7 @@ export default function CommunitySearchPage() {
 
   return (
     <div>
-      <PageHeader title="みんなのコスメ" backHref="/inventory" />
+      <MainTabHeader title="発見" subtitle="DISCOVER" />
 
       <div className="px-4 py-4 space-y-3">
         {/* Search bar */}

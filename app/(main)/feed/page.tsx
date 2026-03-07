@@ -7,6 +7,7 @@ import { Newspaper, BookOpen, Loader2 } from "lucide-react";
 import { MainTabHeader } from "@/components/main-tab-header";
 import { FeedPostCard } from "@/components/feed-post-card";
 import { CommentsSheet } from "@/components/comments-sheet";
+import { HomeShortcutGrid } from "@/components/home-shortcut-grid";
 import { FeedGridSkeleton } from "@/components/loading-skeleton";
 import { useFeed } from "@/hooks/use-feed";
 import { usePost } from "@/hooks/use-post";
@@ -95,7 +96,9 @@ export default function FeedPage() {
 
   return (
     <div>
-      <MainTabHeader title="フィード" />
+      <MainTabHeader title="ホーム" subtitle="HOME" />
+
+      <HomeShortcutGrid />
 
       {/* Tab bar */}
       <div className="flex gap-2 px-4 py-3">
@@ -107,7 +110,7 @@ export default function FeedPage() {
               : "bg-alcheme-sand/50 text-alcheme-muted hover:bg-alcheme-sand"
           }`}
         >
-          みんな
+          おすすめ
         </button>
         <button
           onClick={() => setFeedType("following")}

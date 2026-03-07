@@ -526,6 +526,9 @@
 - [x] Secret Manager 移行: 10個の機密値を `availableSecrets` 方式に移行 ✅
 - [x] Cloud Build トリガー: GitHub 2nd-gen 接続 + `main` ブランチ push 自動デプロイ ✅
 - [x] 画像加工パイプライン: スキャン自動加工 + バッチ API + 楽天リンク規約対応 ✅
+- [x] PhotoEditSheet: Instagram風画像編集UI（背景除去 + フィルター + 調整 + 回転）✅
+- [x] NAV-001: ナビゲーション再構築 — ボトムナビ5タブ(ホーム/発見/AI美容部員/Next Cosme/マイページ) + FAB + サイドメニュー重複解消 ✅
+- [x] NAV-001-D: ホーム画面LIPS風アイコングリッド — 6ショートカット(AI診断/ランキング/レシピ/スキャン/メイク日記/My Cosme) + タイトル「ホーム」+ タブ名「おすすめ」 ✅
 
 *Created: 2026-02-17*
-*Last Updated: 2026-03-07 (Secret Manager移行 + Cloud Buildトリガー自動デプロイ + 画像加工パイプライン)*
+*Last Updated: 2026-03-08 (NAV-001-D ホーム画面アイコングリッド 完了)*

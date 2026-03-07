@@ -1,5 +1,5 @@
 /**
- * Tests for BottomNav component
+ * Tests for BottomNav component — NAV-001 restructure
  */
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
@@ -12,52 +12,55 @@ vi.mock("next/link", () => ({
 }));
 
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/chat",
-}));
-
-vi.mock("@/components/quick-action-sheet", () => ({
-  QuickActionSheet: () => null,
+  usePathname: () => "/feed",
 }));
 
 describe("BottomNav", () => {
-  it("renders feed tab with correct href", () => {
+  it("renders home tab with href /feed", () => {
     render(<BottomNav />);
     const links = screen.getAllByRole("link");
     const hrefs = links.map((l) => l.getAttribute("href"));
     expect(hrefs).toContain("/feed");
   });
 
-  it("renders mypage tab with correct href", () => {
+  it("renders discover tab with href /add/community", () => {
     render(<BottomNav />);
     const links = screen.getAllByRole("link");
     const hrefs = links.map((l) => l.getAttribute("href"));
-    expect(hrefs).toContain("/mypage");
+    expect(hrefs).toContain("/add/community");
   });
 
-  it("renders chat tab with correct href", () => {
+  it("renders AI chat tab with href /chat (center)", () => {
     render(<BottomNav />);
     const links = screen.getAllByRole("link");
     const hrefs = links.map((l) => l.getAttribute("href"));
     expect(hrefs).toContain("/chat");
   });
 
-  it("renders inventory tab with correct href", () => {
+  it("renders Next Cosme tab with href /suggestions", () => {
     render(<BottomNav />);
     const links = screen.getAllByRole("link");
     const hrefs = links.map((l) => l.getAttribute("href"));
-    expect(hrefs).toContain("/inventory");
+    expect(hrefs).toContain("/suggestions");
   });
 
-  it("does not render recipe tab", () => {
+  it("renders mypage tab with href /mypage", () => {
     render(<BottomNav />);
     const links = screen.getAllByRole("link");
     const hrefs = links.map((l) => l.getAttribute("href"));
-    expect(hrefs).not.toContain("/recipes");
+    expect(hrefs).toContain("/mypage");
   });
 
-  it("renders center plus button", () => {
+  it("does not render inventory tab (moved to side menu)", () => {
     render(<BottomNav />);
-    const button = screen.getByLabelText("クイックアクション");
-    expect(button).toBeDefined();
+    const links = screen.getAllByRole("link");
+    const hrefs = links.map((l) => l.getAttribute("href"));
+    expect(hrefs).not.toContain("/inventory");
+  });
+
+  it("does not render center plus button (moved to FAB)", () => {
+    render(<BottomNav />);
+    const button = screen.queryByLabelText("クイックアクション");
+    expect(button).toBeNull();
   });
 });

@@ -6,6 +6,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 import useSWR from 'swr';
 import { BottomNav } from '@/components/bottom-nav';
+import { FabButton } from '@/components/fab-button';
 import { AuroraBackground } from '@/components/aurora-background';
 import { SideMenu } from '@/components/side-menu';
 import { SideMenuProvider } from '@/lib/contexts/side-menu-context';
@@ -65,6 +66,7 @@ export default function MainLayout({
         </div>
       </SideMenuProvider>
       {!hideNav && <BottomNav />}
+      {!hideNav && <FabButton />}
       <SideMenu open={sideMenuOpen} onOpenChange={setSideMenuOpen} />
     </div>
   );

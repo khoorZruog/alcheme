@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
-  Sparkles, LayoutGrid, BookOpen, CalendarHeart,
-  Settings, User, Users, LogOut,
+  LayoutGrid, BookOpen, CalendarHeart, Calendar,
+  Settings, LogOut,
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
@@ -16,17 +16,14 @@ interface SideMenuProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const MAIN_MENU = [
-  { icon: Sparkles, label: "AI美容部員", href: "/chat" },
+const MENU_ITEMS = [
   { icon: LayoutGrid, label: "My Cosme", href: "/inventory" },
   { icon: BookOpen, label: "レシピ", href: "/recipes" },
   { icon: CalendarHeart, label: "メイク日記", href: "/beauty-log" },
+  { icon: Calendar, label: "カレンダー", href: "/beauty-log?view=calendar" },
 ] as const;
 
-const SUB_MENU = [
-  { icon: User, label: "マイページ", href: "/mypage" },
-  { icon: Users, label: "みんなのコスメ", href: "/add/community" },
-  { icon: BookOpen, label: "レシピ一覧", href: "/recipes" },
+const SUB_ITEMS = [
   { icon: Settings, label: "設定", href: "/settings" },
 ] as const;
 
@@ -46,7 +43,29 @@ export function SideMenu({ open, onOpenChange }: SideMenuProps) {
     router.push("/login");
   };
 
-  const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
+  const isActive = (href: string) => {
+    const [path, query] = href.split("?");
+    if (query) {
+      return pathname === path && typeof window !== "undefined" && window.location.search.includes(query);
+    }
+    return pathname === path || pathname.startsWith(path + "/");
+  };
+
+  const renderLink = ({ icon: Icon, label, href }: (typeof MENU_ITEMS)[number] | (typeof SUB_ITEMS)[number]) => (
+    <Link
+      key={`${href}-${label}`}
+      href={href}
+      onClick={() => onOpenChange(false)}
+      className={`flex items-center gap-3 px-6 py-3 text-sm transition-colors ${
+        isActive(href)
+          ? "text-neon-accent bg-neon-accent/5 font-medium"
+          : "text-text-ink hover:bg-gray-50"
+      }`}
+    >
+      <Icon className={`h-5 w-5 ${isActive(href) ? "text-neon-accent" : "text-text-muted"}`} />
+      {label}
+    </Link>
+  );
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -82,39 +101,11 @@ export function SideMenu({ open, onOpenChange }: SideMenuProps) {
         </SheetHeader>
 
         <nav className="py-2">
-          {MAIN_MENU.map(({ icon: Icon, label, href }) => (
-            <Link
-              key={href}
-              href={href}
-              onClick={() => onOpenChange(false)}
-              className={`flex items-center gap-3 px-6 py-3 text-sm transition-colors ${
-                isActive(href)
-                  ? "text-neon-accent bg-neon-accent/5 font-medium"
-                  : "text-text-ink hover:bg-gray-50"
-              }`}
-            >
-              <Icon className={`h-5 w-5 ${isActive(href) ? "text-neon-accent" : "text-text-muted"}`} />
-              {label}
-            </Link>
-          ))}
+          {MENU_ITEMS.map(renderLink)}
 
           <div className="mx-6 my-2 border-t border-gray-100" />
 
-          {SUB_MENU.map(({ icon: Icon, label, href }) => (
-            <Link
-              key={href}
-              href={href}
-              onClick={() => onOpenChange(false)}
-              className={`flex items-center gap-3 px-6 py-3 text-sm transition-colors ${
-                isActive(href)
-                  ? "text-neon-accent bg-neon-accent/5 font-medium"
-                  : "text-text-ink hover:bg-gray-50"
-              }`}
-            >
-              <Icon className={`h-5 w-5 ${isActive(href) ? "text-neon-accent" : "text-text-muted"}`} />
-              {label}
-            </Link>
-          ))}
+          {SUB_ITEMS.map(renderLink)}
         </nav>
 
         <div className="absolute bottom-0 left-0 right-0 border-t border-gray-100 p-4">
