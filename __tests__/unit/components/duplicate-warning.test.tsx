@@ -84,6 +84,29 @@ describe("DuplicateWarning", () => {
     expect(container.innerHTML).toBe("");
   });
 
+  it("treats missing color_code as exact duplicate, not color variant", () => {
+    render(
+      <DuplicateWarning
+        brand="KATE"
+        productName="リップモンスター"
+        items={[makeItem()]}
+      />,
+    );
+    expect(screen.getByText("このコスメはすでにMy Cosmeに登録されています")).toBeDefined();
+  });
+
+  it("treats existing item with no color as exact duplicate", () => {
+    render(
+      <DuplicateWarning
+        brand="KATE"
+        productName="リップモンスター"
+        colorCode="03"
+        items={[makeItem({ color_code: "" })]}
+      />,
+    );
+    expect(screen.getByText("このコスメはすでにMy Cosmeに登録されています")).toBeDefined();
+  });
+
   it("shows nothing when brand or productName is empty", () => {
     const { container } = render(
       <DuplicateWarning

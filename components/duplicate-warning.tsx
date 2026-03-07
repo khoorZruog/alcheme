@@ -35,12 +35,16 @@ export function useDuplicateCheck(
       const ic = (item.color_code || "").toLowerCase();
 
       if (ib === b && ip === p) {
-        if (c && ic === c) {
+        // Both have color and they match → exact duplicate
+        if (c && ic && ic === c) {
           return "exact";
         }
-        if (!c || !ic || ic !== c) {
-          return "color_variant";
+        // Either color is missing → treat as exact (can't distinguish)
+        if (!c || !ic) {
+          return "exact";
         }
+        // Both have color but different → color variant
+        return "color_variant";
       }
     }
     return null;

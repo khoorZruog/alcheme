@@ -28,12 +28,6 @@ export default function ScanConfirmPage() {
     if (stored) {
       const parsed = JSON.parse(stored) as InventoryItem[];
       setItems(parsed);
-      // Auto-confirm high confidence items (or those with auto-matched single candidate)
-      const initial: Record<string, boolean> = {};
-      parsed.forEach((item) => {
-        if (item.confidence === "high") initial[item.id] = true;
-      });
-      setConfirmed(initial);
     } else {
       router.push("/scan");
     }
