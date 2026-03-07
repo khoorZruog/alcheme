@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
-  LayoutGrid, BookOpen, CalendarHeart, Calendar,
+  LayoutGrid, BookOpen, CalendarHeart,
   Settings, LogOut,
 } from "lucide-react";
 import { signOut } from "firebase/auth";
@@ -20,7 +20,6 @@ const MENU_ITEMS = [
   { icon: LayoutGrid, label: "My Cosme", href: "/inventory" },
   { icon: BookOpen, label: "レシピ", href: "/recipes" },
   { icon: CalendarHeart, label: "メイク日記", href: "/beauty-log" },
-  { icon: Calendar, label: "カレンダー", href: "/beauty-log?view=calendar" },
 ] as const;
 
 const SUB_ITEMS = [

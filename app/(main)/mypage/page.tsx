@@ -76,11 +76,6 @@ export default function MyPage() {
     [mutateMe]
   );
 
-  const currentGrid =
-    activeTab === "posts" ? postsGrid
-    : activeTab === "recipes" ? recipesGrid
-    : beautyLogsGrid;
-
   const emptyMessages: Record<ProfileContentTab, string> = {
     posts: "まだ投稿がありません",
     recipes: "まだレシピがありません",
@@ -135,19 +130,31 @@ export default function MyPage() {
 
         <ProfileBio bio={bio} />
 
-        <ProfileActions isOwnProfile completionRate={completionRate} />
-
         <ProfileSocialLinks socialLinks={socialLinks} />
+
+        <ProfileActions isOwnProfile completionRate={completionRate} />
 
         <BestCosmeSection items={bestCosme} onEdit={() => setBestCosmeOpen(true)} />
 
-        <BeautyLogPreview />
+        <div className="sticky top-14 z-40 bg-alcheme-cream/90 backdrop-blur-sm">
+          <ProfileContentTabs activeTab={activeTab} onTabChange={setActiveTab} />
+        </div>
 
-        <ProfileContentTabs activeTab={activeTab} onTabChange={setActiveTab} />
-
-        <ProfileCategoryBadges categories={categories} />
-
-        <ProfileContentGrid items={currentGrid} emptyMessage={emptyMessages[activeTab]} />
+        {activeTab === "posts" && (
+          <>
+            <ProfileCategoryBadges categories={categories} />
+            <ProfileContentGrid items={postsGrid} emptyMessage={emptyMessages.posts} />
+          </>
+        )}
+        {activeTab === "recipes" && (
+          <ProfileContentGrid items={recipesGrid} emptyMessage={emptyMessages.recipes} />
+        )}
+        {activeTab === "beautyLogs" && (
+          <>
+            <BeautyLogPreview />
+            <ProfileContentGrid items={beautyLogsGrid} emptyMessage={emptyMessages.beautyLogs} />
+          </>
+        )}
       </div>
 
       <BestCosmePickerSheet

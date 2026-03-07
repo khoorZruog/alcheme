@@ -50,7 +50,7 @@ export default function SettingsPage() {
 
   return (
     <div>
-      <PageHeader title="設定" backHref="/mypage" />
+      <PageHeader title="設定" />
 
       <div className="px-4 py-4 space-y-2">
         {/* Profile Card */}

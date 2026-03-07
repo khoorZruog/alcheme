@@ -78,6 +78,7 @@
 | [2026-03-07_photo-edit-sheet.md](plans/2026-03-07_photo-edit-sheet.md) | 商品画像加工フロー（PhotoEditSheet）— Instagram風4ツール編集UI + AI背景除去 |
 | [2026-03-08_NAV-001_navigation-restructure.md](plans/2026-03-08_NAV-001_navigation-restructure.md) | NAV-001 ナビゲーション再構築 — ツール→プラットフォーム転換（ボトムナビ5タブ + FAB + サイドメニュー整理） |
 | [2026-03-08_NAV-001-D_home-shortcut-grid.md](plans/2026-03-08_NAV-001-D_home-shortcut-grid.md) | NAV-001-D ホーム画面LIPS風アイコングリッド — 6ショートカット + タイトル/タブ名変更 |
+| [2026-03-07_UX-009_mypage-redesign.md](plans/2026-03-07_UX-009_mypage-redesign.md) | UX-009 マイページ全体リデザイン — カレンダー統合 + 戻るボタン修正 + レイアウト再構成 |
 
 ## reference/ — 外部リファレンス・テスト
 

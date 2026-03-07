@@ -529,6 +529,7 @@
 - [x] PhotoEditSheet: Instagram風画像編集UI（背景除去 + フィルター + 調整 + 回転）✅
 - [x] NAV-001: ナビゲーション再構築 — ボトムナビ5タブ(ホーム/発見/AI美容部員/Next Cosme/マイページ) + FAB + サイドメニュー重複解消 ✅
 - [x] NAV-001-D: ホーム画面LIPS風アイコングリッド — 6ショートカット(AI診断/ランキング/レシピ/スキャン/メイク日記/My Cosme) + タイトル「ホーム」+ タブ名「おすすめ」 ✅
+- [x] UX-MyPage: マイページ全体リデザイン — カレンダーサイドメニュー統合 + 戻るボタンrouter.back()修正 + レイアウト再構成(BeautyLogPreview/CategoryBadgesタブ内移動、スティッキータブ) ✅
 
 *Created: 2026-02-17*
-*Last Updated: 2026-03-08 (NAV-001-D ホーム画面アイコングリッド 完了)*
+*Last Updated: 2026-03-08 (UX-MyPage マイページリデザイン 完了)*

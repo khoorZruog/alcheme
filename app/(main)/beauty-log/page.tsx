@@ -195,7 +195,6 @@ function BeautyLogPageInner() {
     <div className="min-h-full pb-8">
       <PageHeader
         title="メイク日記"
-        backHref="/mypage"
         rightElement={
           <>
             {/* View mode toggle */}
