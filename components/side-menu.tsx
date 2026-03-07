@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
   Sparkles, LayoutGrid, BookOpen, CalendarHeart,
-  Settings, User, LogOut,
+  Settings, User, Users, LogOut,
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
@@ -25,6 +25,7 @@ const MAIN_MENU = [
 
 const SUB_MENU = [
   { icon: User, label: "マイページ", href: "/mypage" },
+  { icon: Users, label: "みんなのコスメ", href: "/add/community" },
   { icon: BookOpen, label: "レシピ一覧", href: "/recipes" },
   { icon: Settings, label: "設定", href: "/settings" },
 ] as const;

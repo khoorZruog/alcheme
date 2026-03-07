@@ -512,4 +512,4 @@
 ---
 
 *Created: 2026-02-17*
-*Last Updated: 2026-03-07 (UX-003: ブランド名・商品名サジェスト + 重複検知 — AutocompleteInput + DuplicateWarning 3画面統合)*
+*Last Updated: 2026-03-07 (ARCH-003追加: カタログ・バックフィル API + サイドメニュー「みんなのコスメ」+ Firestore複合インデックス定義)*

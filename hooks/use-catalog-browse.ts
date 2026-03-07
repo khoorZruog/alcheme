@@ -38,6 +38,7 @@ export function useCatalogBrowse(
   const { data, error, isLoading, isValidating, size, setSize, mutate } =
     useSWRInfinite<BrowsePage>(getKey, fetcher, {
       revalidateFirstPage: false,
+      shouldRetryOnError: false,
     });
 
   const results = data ? data.flatMap((page) => page.results) : [];

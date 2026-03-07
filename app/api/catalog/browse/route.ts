@@ -33,35 +33,61 @@ export async function GET(request: NextRequest) {
 
   try {
     const catalogRef = adminDb.collection('catalog');
-    let query: FirebaseFirestore.Query = catalogRef.where('category', '==', category);
 
-    if (brand) {
-      query = query.where('brand_normalized', '==', brand.toLowerCase());
-    }
+    // Try composite-index query first, fall back to in-memory sort
+    let resultDocs: FirebaseFirestore.QueryDocumentSnapshot[] = [];
+    let hasMore = false;
+    let usedFallback = false;
 
-    query = query.orderBy(sortKey, 'desc');
+    try {
+      let query: FirebaseFirestore.Query = catalogRef.where('category', '==', category);
+      if (brand) {
+        query = query.where('brand_normalized', '==', brand.toLowerCase());
+      }
+      query = query.orderBy(sortKey, 'desc');
 
-    // Cursor-based pagination: "sortValue:docId"
-    if (cursor) {
-      const sepIdx = cursor.indexOf(':');
-      if (sepIdx > 0) {
-        const cursorValue = Number(cursor.slice(0, sepIdx));
-        const cursorDocId = cursor.slice(sepIdx + 1);
-        const cursorDoc = await catalogRef.doc(cursorDocId).get();
-        if (cursorDoc.exists) {
-          query = query.startAfter(cursorValue, cursorDoc);
-        } else {
-          query = query.startAfter(cursorValue);
+      if (cursor) {
+        const sepIdx = cursor.indexOf(':');
+        if (sepIdx > 0) {
+          const cursorValue = Number(cursor.slice(0, sepIdx));
+          const cursorDocId = cursor.slice(sepIdx + 1);
+          const cursorDoc = await catalogRef.doc(cursorDocId).get();
+          if (cursorDoc.exists) {
+            query = query.startAfter(cursorValue, cursorDoc);
+          } else {
+            query = query.startAfter(cursorValue);
+          }
         }
       }
+
+      query = query.limit(limit + 1);
+      const snapshot = await query.get();
+      const docs = snapshot.docs;
+      hasMore = docs.length > limit;
+      resultDocs = hasMore ? docs.slice(0, limit) : docs;
+    } catch (indexError: unknown) {
+      // Fallback: composite index not yet created — fetch without orderBy, sort in memory
+      const errMsg = indexError instanceof Error ? indexError.message : '';
+      if (errMsg.includes('index') || errMsg.includes('FAILED_PRECONDITION')) {
+        console.warn('Catalog browse: composite index missing, using in-memory sort. Error:', errMsg);
+        usedFallback = true;
+        let fallbackQuery: FirebaseFirestore.Query = catalogRef.where('category', '==', category);
+        if (brand) {
+          fallbackQuery = fallbackQuery.where('brand_normalized', '==', brand.toLowerCase());
+        }
+        fallbackQuery = fallbackQuery.limit(200);
+        const fallbackSnap = await fallbackQuery.get();
+        const allDocs = fallbackSnap.docs.sort((a, b) => {
+          return (b.data()[sortKey] ?? 0) - (a.data()[sortKey] ?? 0);
+        });
+        // Simple offset-based pagination for fallback
+        const startIdx = cursor ? parseInt(cursor, 10) || 0 : 0;
+        resultDocs = allDocs.slice(startIdx, startIdx + limit);
+        hasMore = startIdx + limit < allDocs.length;
+      } else {
+        throw indexError;
+      }
     }
-
-    query = query.limit(limit + 1); // +1 to detect hasMore
-
-    const snapshot = await query.get();
-    const docs = snapshot.docs;
-    const hasMore = docs.length > limit;
-    const resultDocs = hasMore ? docs.slice(0, limit) : docs;
 
     const results = resultDocs.map((doc) => {
       const data = doc.data();
@@ -96,31 +122,42 @@ export async function GET(request: NextRequest) {
     // Build next_cursor from last result
     let nextCursor: string | null = null;
     if (hasMore && resultDocs.length > 0) {
-      const lastDoc = resultDocs[resultDocs.length - 1];
-      const lastData = lastDoc.data();
-      nextCursor = `${lastData[sortKey] ?? 0}:${lastDoc.id}`;
+      if (usedFallback) {
+        // Fallback uses simple numeric offset
+        const startIdx = cursor ? parseInt(cursor, 10) || 0 : 0;
+        nextCursor = String(startIdx + limit);
+      } else {
+        const lastDoc = resultDocs[resultDocs.length - 1];
+        const lastData = lastDoc.data();
+        nextCursor = `${lastData[sortKey] ?? 0}:${lastDoc.id}`;
+      }
     }
 
     // Extract top brands from first page only (no cursor)
     let topBrands: string[] | undefined;
     if (!cursor && !brand) {
-      const brandCounts = new Map<string, number>();
-      // Fetch up to 100 docs for brand extraction
-      const brandQuery = catalogRef
-        .where('category', '==', category)
-        .orderBy('have_count', 'desc')
-        .limit(100);
-      const brandSnap = await brandQuery.get();
-      for (const doc of brandSnap.docs) {
-        const b = doc.data().brand as string | undefined;
-        if (b) {
-          brandCounts.set(b, (brandCounts.get(b) ?? 0) + 1);
+      try {
+        const brandCounts = new Map<string, number>();
+        let brandQuery: FirebaseFirestore.Query = catalogRef.where('category', '==', category);
+        if (!usedFallback) {
+          brandQuery = brandQuery.orderBy('have_count', 'desc');
         }
+        brandQuery = brandQuery.limit(100);
+        const brandSnap = await brandQuery.get();
+        for (const doc of brandSnap.docs) {
+          const b = doc.data().brand as string | undefined;
+          if (b) {
+            brandCounts.set(b, (brandCounts.get(b) ?? 0) + 1);
+          }
+        }
+        topBrands = [...brandCounts.entries()]
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 15)
+          .map(([name]) => name);
+      } catch {
+        // Brand extraction also requires composite index — skip gracefully
+        topBrands = [];
       }
-      topBrands = [...brandCounts.entries()]
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 15)
-        .map(([name]) => name);
     }
 
     return NextResponse.json({

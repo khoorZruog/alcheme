@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Loader2, Users, ChevronDown } from "lucide-react";
+import { Search, Loader2, Users, ChevronDown, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
 import { Input } from "@/components/ui/input";
@@ -52,7 +52,28 @@ export default function CommunitySearchPage() {
     hasMore,
     isEmpty: browseEmpty,
     loadMore,
+    mutate: mutateBrowse,
   } = useCatalogBrowse(isSearching ? null : category, brand, sort);
+
+  // Auto-backfill: when catalog is empty on first load, backfill user's products
+  const backfillAttempted = useRef(false);
+  const [isBackfilling, setIsBackfilling] = useState(false);
+
+  useEffect(() => {
+    if (backfillAttempted.current || browseLoading || isSearching || !browseEmpty) return;
+    backfillAttempted.current = true;
+    setIsBackfilling(true);
+    fetch("/api/catalog/backfill", { method: "POST" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.upserted > 0) {
+          toast.success(`${data.upserted}件の商品をカタログに追加しました`);
+          mutateBrowse();
+        }
+      })
+      .catch(() => {})
+      .finally(() => setIsBackfilling(false));
+  }, [browseLoading, browseEmpty, isSearching, mutateBrowse]);
 
   const handleSelect = useCallback((entry: CatalogEntry) => {
     const item: InventoryItem = {
@@ -100,7 +121,7 @@ export default function CommunitySearchPage() {
 
   return (
     <div>
-      <PageHeader title="みんなのコスメから追加" backHref="/inventory" />
+      <PageHeader title="みんなのコスメ" backHref="/inventory" />
 
       <div className="px-4 py-4 space-y-3">
         {/* Search bar */}
@@ -192,9 +213,39 @@ export default function CommunitySearchPage() {
             {browseLoading && <InventoryGridSkeleton />}
 
             {!browseLoading && browseEmpty && (
-              <div className="py-12 text-center space-y-2">
-                <Users className="h-10 w-10 text-text-muted/30 mx-auto" />
-                <p className="text-sm text-text-muted">まだ商品が登録されていません</p>
+              <div className="py-12 text-center space-y-3">
+                {isBackfilling ? (
+                  <>
+                    <Loader2 className="h-8 w-8 text-neon-accent animate-spin mx-auto" />
+                    <p className="text-sm text-text-muted">既存のコスメをカタログに同期中...</p>
+                  </>
+                ) : (
+                  <>
+                    <Users className="h-10 w-10 text-text-muted/30 mx-auto" />
+                    <p className="text-sm text-text-muted">まだ商品が登録されていません</p>
+                    <button
+                      onClick={() => {
+                        setIsBackfilling(true);
+                        fetch("/api/catalog/backfill", { method: "POST" })
+                          .then((res) => res.json())
+                          .then((data) => {
+                            if (data.upserted > 0) {
+                              toast.success(`${data.upserted}件の商品をカタログに追加しました`);
+                              mutateBrowse();
+                            } else {
+                              toast("新しい商品はありませんでした");
+                            }
+                          })
+                          .catch(() => toast.error("同期に失敗しました"))
+                          .finally(() => setIsBackfilling(false));
+                      }}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-neon-accent border border-neon-accent/30 hover:bg-neon-accent/5 transition btn-squishy"
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" />
+                      カタログを同期
+                    </button>
+                  </>
+                )}
               </div>
             )}
 
