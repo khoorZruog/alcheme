@@ -68,10 +68,10 @@ export default function ScanPage() {
         const scanImages = images.map((img) => img.previewUrl);
         sessionStorage.setItem("scanImages", JSON.stringify(scanImages));
 
-        // Attach first user image to each item if no image_url or rakuten_image_url
+        // Attach user's scan photo — always prioritise over Rakuten images
         const enrichedItems = data.items.map((item: Record<string, unknown>) => ({
           ...item,
-          image_url: item.image_url || item.rakuten_image_url || scanImages[0] || undefined,
+          image_url: scanImages[0] || item.image_url || undefined,
         }));
 
         sessionStorage.setItem("scanResult", JSON.stringify(enrichedItems));

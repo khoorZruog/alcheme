@@ -7,6 +7,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import { getAuthUserId } from '@/lib/api/auth';
 import { timestampToString } from '@/lib/firebase/firestore-helpers';
 import { Timestamp } from 'firebase-admin/firestore';
+import { triggerCatalogImageProcessing } from '@/lib/api/catalog-upsert';
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -109,6 +110,20 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
           .collection('users').doc(userId)
           .collection('products').doc(existingData.product_id)
           .update({ ...productUpdates, updated_at: now });
+
+        // Fire-and-forget: AI image processing for user-uploaded photos
+        if (typeof productUpdates.image_url === 'string'
+            && productUpdates.image_url.startsWith('data:')) {
+          const productDoc = await adminDb
+            .collection('users').doc(userId)
+            .collection('products').doc(existingData.product_id)
+            .get();
+          const catalogId = productDoc.data()?.catalog_id as string | undefined;
+          if (catalogId) {
+            const b64 = (productUpdates.image_url as string).replace(/^data:[^;]+;base64,/, '');
+            triggerCatalogImageProcessing(catalogId, b64, true);
+          }
+        }
       }
 
       // Update inventory instance

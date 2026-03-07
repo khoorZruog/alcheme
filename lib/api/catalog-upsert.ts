@@ -157,15 +157,16 @@ export async function updateCatalogUsageStats(
 export function triggerCatalogImageProcessing(
   catalogId: string,
   imageBase64: string,
+  /** force=true で既存画像があっても上書き加工する（画像変更時） */
+  force = false,
 ): void {
   if (!catalogId || !imageBase64) return;
 
-  // Check if catalog entry already has an image_url
   const catalogRef = adminDb.collection('catalog').doc(catalogId);
   catalogRef.get().then(async (snap) => {
     if (!snap.exists) return;
     const data = snap.data();
-    if (data?.image_url) return; // Already has processed image
+    if (!force && data?.image_url) return; // Already has processed image
 
     try {
       const { callAgent } = await import('@/lib/api/agent-client');

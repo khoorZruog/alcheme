@@ -374,27 +374,43 @@ options:
   logging: CLOUD_LOGGING_ONLY
 ```
 
-### 5.2 Cloud Build トリガー設定
+### 5.2 Cloud Build トリガー設定（alche:me 実績）
+
+alche:me では GitHub 2nd-gen 接続 + `main` ブランチへの push トリガーを使用:
 
 ```bash
-# GitHub リポジトリ接続（初回のみ、Console で行うのが簡単）
-# https://console.cloud.google.com/cloud-build/triggers
+# 1. GitHub 接続作成（初回のみ、ブラウザ OAuth 必要）
+gcloud builds connections create github github-alcheme \
+  --project=alcheme-c36ef --region=asia-northeast1
 
-# CLI でトリガー作成
+# 2. リポジトリリンク
+gcloud builds repositories create alcheme \
+  --project=alcheme-c36ef --region=asia-northeast1 \
+  --connection=github-alcheme \
+  --remote-uri="https://github.com/khoorZruog/alcheme.git"
+
+# 3. トリガー作成
 gcloud builds triggers create github \
-  --repo-name=my-app \
-  --repo-owner=my-org \
+  --project=alcheme-c36ef --region=asia-northeast1 \
+  --name="deploy-on-push-main" \
+  --repository="projects/alcheme-c36ef/locations/asia-northeast1/connections/github-alcheme/repositories/alcheme" \
   --branch-pattern="^main$" \
-  --build-config=cloudbuild.yaml \
-  --substitutions="_FIREBASE_API_KEY=xxx,_FIREBASE_AUTH_DOMAIN=xxx"
+  --build-config="cloudbuild.yaml" \
+  --service-account="projects/alcheme-c36ef/serviceAccounts/90453473992@cloudbuild.gserviceaccount.com"
 ```
 
 ### 5.3 手動で Cloud Build を実行
 
 ```bash
-gcloud builds submit \
-  --config=cloudbuild.yaml \
-  --substitutions=SHORT_SHA=$(git rev-parse --short HEAD)
+# Secret Manager 方式: substitutions 不要
+gcloud builds submit . --project=alcheme-c36ef --config=cloudbuild.yaml
+```
+
+### 5.4 自動デプロイ
+
+```bash
+# main ブランチに push するだけで自動デプロイ
+git push origin main
 ```
 
 ---
@@ -408,17 +424,45 @@ gcloud builds submit \
 | **ビルド時** (NEXT_PUBLIC_*) | Dockerfile ARG + Cloud Build substitutions | `NEXT_PUBLIC_API_URL` |
 | **ランタイム** (サーバーサイド) | `--set-env-vars` または Secret Manager | `DATABASE_URL`, `API_KEY` |
 
-### 6.2 Secret Manager の使用（本番推奨）
+### 6.2 Secret Manager の使用（本番推奨 — alche:me 採用方式）
+
+alche:me では Cloud Build の `availableSecrets` 方式を採用（2026-03-07 移行完了）。
 
 ```bash
 # シークレット作成
 echo -n "my-secret-value" | \
-  gcloud secrets create MY_SECRET --data-file=-
+  gcloud secrets create MY_SECRET --data-file=- --project=alcheme-c36ef
 
-# Cloud Run にマウント
-gcloud run deploy my-app-web \
-  --set-secrets="MY_SECRET=MY_SECRET:latest"
+# シークレット値の更新
+echo -n "new-value" | \
+  gcloud secrets versions add MY_SECRET --data-file=- --project=alcheme-c36ef
 ```
+
+**cloudbuild.yaml での参照方式:**
+
+```yaml
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/MY_SECRET/versions/latest
+      env: MY_SECRET
+
+steps:
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    entrypoint: bash
+    args:
+      - "-c"
+      - |
+        gcloud run deploy my-service \
+          --set-env-vars="MY_SECRET=$$MY_SECRET"
+    secretEnv:
+      - MY_SECRET
+```
+
+**必要な IAM ロール:**
+- Cloud Build legacy SA: `roles/secretmanager.secretAccessor`
+- Compute Engine default SA: `roles/secretmanager.secretAccessor`（`gcloud builds submit` 用）
+
+> 詳細は `docs/plans/2026-03-07_secret-manager-migration.md` を参照。
 
 ### 6.3 `.env.example` の維持
 

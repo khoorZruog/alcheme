@@ -521,5 +521,11 @@
 
 ---
 
+### インフラ改善（2026-03-07）
+
+- [x] Secret Manager 移行: 10個の機密値を `availableSecrets` 方式に移行 ✅
+- [x] Cloud Build トリガー: GitHub 2nd-gen 接続 + `main` ブランチ push 自動デプロイ ✅
+- [x] 画像加工パイプライン: スキャン自動加工 + バッチ API + 楽天リンク規約対応 ✅
+
 *Created: 2026-02-17*
-*Last Updated: 2026-03-07 (ARCH-003追加: カタログ・バックフィル API + サイドメニュー「みんなのコスメ」+ Firestore複合インデックス定義)*
+*Last Updated: 2026-03-07 (Secret Manager移行 + Cloud Buildトリガー自動デプロイ + 画像加工パイプライン)*

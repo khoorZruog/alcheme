@@ -196,6 +196,7 @@ export default function ScanConfirmPage() {
         open={!!editItem}
         onClose={() => setEditItem(null)}
         onSave={handleSaveEdit}
+        skipDuplicateCheck
       />
     </div>
   );

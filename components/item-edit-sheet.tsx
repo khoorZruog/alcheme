@@ -23,6 +23,8 @@ interface ItemEditSheetProps {
   open: boolean;
   onClose: () => void;
   onSave: (updates: Partial<InventoryItem>) => void;
+  /** Skip duplicate check (e.g. appraisal confirm context) */
+  skipDuplicateCheck?: boolean;
 }
 
 const TEXTURES: CosmeTexture[] = ["マット", "ツヤ", "サテン", "シマー", "クリーム", "パウダー", "リキッド"];
@@ -65,7 +67,7 @@ function resizeImage(file: File, size: number): Promise<string> {
   });
 }
 
-export function ItemEditSheet({ item, open, onClose, onSave }: ItemEditSheetProps) {
+export function ItemEditSheet({ item, open, onClose, onSave, skipDuplicateCheck }: ItemEditSheetProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
 
@@ -123,8 +125,12 @@ export function ItemEditSheet({ item, open, onClose, onSave }: ItemEditSheetProp
     form.color_code,
   );
 
-  // Duplicate check for save button control
-  const duplicateType = useDuplicateCheck(form.brand, form.product_name, form.color_code, inventoryItems, item?.id);
+  // Duplicate check for save button control (skipped during appraisal)
+  const duplicateType = useDuplicateCheck(
+    form.brand, form.product_name, form.color_code,
+    skipDuplicateCheck ? [] : inventoryItems,
+    item?.id,
+  );
   const isNewItem = !item?.id;
   const isExactDuplicate = duplicateType === "exact";
 
