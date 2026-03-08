@@ -18,6 +18,7 @@ import { useProductSuggestions } from "@/hooks/use-product-suggestions";
 import { AutocompleteInput } from "@/components/autocomplete-input";
 import { DuplicateWarning, useDuplicateCheck } from "@/components/duplicate-warning";
 import { useInventory } from "@/hooks/use-inventory";
+import { getStatLabels } from "@/components/stat-bar";
 
 interface ItemEditSheetProps {
   item: InventoryItem | null;
@@ -31,12 +32,6 @@ interface ItemEditSheetProps {
 const TEXTURES: CosmeTexture[] = ["マット", "ツヤ", "サテン", "シマー", "クリーム", "パウダー", "リキッド"];
 const REMAINING_OPTIONS = ["100%", "90%", "80%", "70%", "60%", "50%", "40%", "30%", "20%", "10%"];
 const STAT_SCORES = ["1", "2", "3", "4", "5"];
-const STAT_LABELS: { key: keyof CosmeStats; label: string }[] = [
-  { key: "pigment", label: "発色力" },
-  { key: "longevity", label: "持続力" },
-  { key: "shelf_life", label: "コスパ" },
-  { key: "natural_finish", label: "ナチュラル" },
-];
 
 /** Resize image to fit within a square canvas (letterboxed, white bg) */
 function resizeImage(file: File, size: number): Promise<string> {
@@ -350,7 +345,7 @@ export function ItemEditSheet({ item, open, onClose, onSave, skipDuplicateCheck 
           <div className="space-y-2">
             <Label className="text-alcheme-charcoal">スペック (1〜5)</Label>
             <div className="grid grid-cols-2 gap-3">
-              {STAT_LABELS.map(({ key, label }) => (
+              {getStatLabels(form.category).map(({ key, label }) => (
                 <div key={key} className="space-y-1">
                   <p className="text-xs text-alcheme-muted">{label}</p>
                   <Select

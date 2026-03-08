@@ -2,15 +2,11 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# System dependencies for onnxruntime (rembg) and image processing
+# System dependencies for Pillow image processing
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgomp1 \
     libgl1 \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
-
-# Writable path for U2NET model download (rembg)
-ENV U2NET_HOME=/tmp/.u2net
 
 # Install dependencies first for layer caching
 COPY pyproject.toml .

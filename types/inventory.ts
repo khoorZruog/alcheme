@@ -10,12 +10,12 @@ export type CosmeTexture = "マット" | "ツヤ" | "サテン" | "シマー" | 
 /** 画像認識の信頼度 */
 export type Confidence = "high" | "medium" | "low";
 
-/** コスメスペック（内部値 1-5） */
+/** コスメスペック（内部値 1-5、ラベルはカテゴリ別に変化） */
 export interface CosmeStats {
-  pigment: number;        // 発色力
-  longevity: number;      // 持続力
-  shelf_life: number;     // 製品寿命
-  natural_finish: number; // ナチュラルさ
+  pigment: number;        // slot1: 発色/カバー力/保湿/仕上がり
+  longevity: number;      // slot2: キープ力/崩れにくさ/肌なじみ
+  shelf_life: number;     // slot3: コスパ（共通）
+  natural_finish: number; // slot4: ツヤ/肌なじみ/仕上がり/使用感/使いやすさ
 }
 
 /** レア度 */

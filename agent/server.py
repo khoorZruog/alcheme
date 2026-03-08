@@ -1257,54 +1257,11 @@ async def process_image(request: Request):
         raise HTTPException(500, str(e))
 
 
-@app.post("/process-image-preview", dependencies=[Depends(verify_api_key)])
-async def process_image_preview(request: Request):
-    """Process image for preview only — returns base64 instead of uploading to GCS.
-
-    Expects JSON: { "image_base64": str }
-    Returns JSON: { "processed_base64": str, "mime_type": "image/webp" }
-    """
-    try:
-        body = await request.json()
-        image_b64 = body.get("image_base64", "")
-        if not image_b64:
-            raise HTTPException(400, "image_base64 is required")
-
-        image_bytes = base64.b64decode(image_b64)
-
-        loop = asyncio.get_event_loop()
-        result_bytes = await loop.run_in_executor(
-            None, _process_product_image, image_bytes
-        )
-
-        result_b64 = base64.b64encode(result_bytes).decode("ascii")
-        return {"processed_base64": result_b64, "mime_type": "image/webp"}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error("process-image-preview error: %s", e, exc_info=True)
-        raise HTTPException(500, str(e))
-
-
 def _process_product_image(image_bytes: bytes) -> bytes:
-    """Remove background and normalize to 512x512 square with white bg."""
+    """Normalize image to 512x512 square with white bg (no background removal)."""
     from io import BytesIO
-    try:
-        from rembg import remove as rembg_remove
-    except ImportError:
-        logger.warning("rembg not installed, skipping background removal")
-        rembg_remove = None
-
     from PIL import Image
 
-    # Background removal (if rembg available)
-    if rembg_remove is not None:
-        try:
-            image_bytes = rembg_remove(image_bytes)
-        except Exception as e:
-            logger.warning("rembg failed, skipping background removal: %s", e)
-
-    # Open and normalize
     img = Image.open(BytesIO(image_bytes)).convert("RGBA")
 
     # Create 512x512 white canvas

@@ -16,7 +16,7 @@ import {
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useImageProcess } from "@/hooks/use-image-process";
+import { removeBackground } from "@imgly/background-removal";
 
 /* ------------------------------------------------------------------ */
 /*  Types & constants                                                  */
@@ -57,11 +57,42 @@ const TOOLS: { id: ToolTab; icon: typeof Sparkles; label: string }[] = [
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
+/** Browser-side background removal + 512x512 white-bg normalization */
+async function removeBackgroundClient(dataUrl: string): Promise<string> {
+  const res = await fetch(dataUrl);
+  const blob = await res.blob();
+  const resultBlob = await removeBackground(blob, {
+    output: { format: "image/png" },
+  });
+  const img = new window.Image();
+  const url = URL.createObjectURL(resultBlob);
+  return new Promise((resolve) => {
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const canvas = document.createElement("canvas");
+      canvas.width = 512;
+      canvas.height = 512;
+      const ctx = canvas.getContext("2d")!;
+      ctx.fillStyle = "#f9fafb";
+      ctx.fillRect(0, 0, 512, 512);
+      const pad = 16;
+      const size = 512 - pad * 2;
+      const scale = Math.min(size / img.width, size / img.height);
+      const w = img.width * scale;
+      const h = img.height * scale;
+      ctx.drawImage(img, (512 - w) / 2, (512 - h) / 2, w, h);
+      resolve(canvas.toDataURL("image/webp", 0.85));
+    };
+    img.src = url;
+  });
+}
+
 export function PhotoEditSheet({ imageUrl, open, onClose, onConfirm }: PhotoEditSheetProps) {
-  // Background removal
+  // Background removal (browser-side)
   const [bgRemovedUrl, setBgRemovedUrl] = useState<string | null>(null);
   const [useBgRemoved, setUseBgRemoved] = useState(false);
-  const { processImage, isProcessing, error: processError } = useImageProcess();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processError, setProcessError] = useState<string | null>(null);
 
   // Filters & adjustments
   const [activeFilter, setActiveFilter] = useState("natural");
@@ -106,13 +137,18 @@ export function PhotoEditSheet({ imageUrl, open, onClose, onConfirm }: PhotoEdit
 
   const handleBgRemove = useCallback(async () => {
     if (!imageUrl) return;
-    const base64 = imageUrl.replace(/^data:[^;]+;base64,/, "");
-    const result = await processImage(base64);
-    if (result) {
+    setIsProcessing(true);
+    setProcessError(null);
+    try {
+      const result = await removeBackgroundClient(imageUrl);
       setBgRemovedUrl(result);
       setUseBgRemoved(true);
+    } catch {
+      setProcessError("背景除去に失敗しました。もう一度お試しください。");
+    } finally {
+      setIsProcessing(false);
     }
-  }, [imageUrl, processImage]);
+  }, [imageUrl]);
 
   const handleConfirm = useCallback(() => {
     if (!sourceUrl) return;

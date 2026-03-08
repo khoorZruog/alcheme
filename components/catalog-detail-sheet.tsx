@@ -56,31 +56,24 @@ export function CatalogDetailSheet({
             )}
           </div>
 
-          {/* Rakuten link */}
-          {(entry.product_url || entry.rakuten_image_url) && (
-            <div className="flex flex-col gap-1.5">
-              {entry.product_url && entry.product_url.includes('rakuten.co.jp') && (
-                <a
-                  href={entry.product_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-sm text-neon-accent font-bold hover:underline"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                  楽天で見る
-                </a>
-              )}
+          {/* Purchase link */}
+          {(() => {
+            const hasDirectUrl = entry.product_url && entry.product_url.includes('rakuten.co.jp');
+            const href = hasDirectUrl
+              ? entry.product_url!
+              : `https://search.rakuten.co.jp/search/mall/${encodeURIComponent(`${entry.brand} ${entry.product_name}${entry.color_name ? ` ${entry.color_name}` : ''}`)}/`;
+            return (
               <a
-                href={`https://search.rakuten.co.jp/search/mall/${encodeURIComponent(`${entry.brand} ${entry.product_name}${entry.color_name ? ` ${entry.color_name}` : ''}`)}/`}
+                href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-xs text-text-muted hover:text-text-ink transition"
+                className="flex items-center gap-1.5 text-sm text-neon-accent font-bold hover:underline"
               >
-                <Search className="h-3.5 w-3.5" />
-                楽天で探す
+                {hasDirectUrl ? <ExternalLink className="h-4 w-4" /> : <Search className="h-4 w-4" />}
+                {hasDirectUrl ? "楽天で見る" : "楽天で探す"}
               </a>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Product info */}
           <div className="space-y-1">

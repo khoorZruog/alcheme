@@ -103,7 +103,7 @@ export function AppraisalCard({ item, confirmed, onConfirm, onEdit, onEditImage 
 
       {item.stats && (
         <div className="mt-3">
-          <StatBarGroup stats={item.stats} />
+          <StatBarGroup stats={item.stats} category={item.category} />
         </div>
       )}
 

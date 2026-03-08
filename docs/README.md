@@ -79,6 +79,8 @@
 | [2026-03-08_NAV-001_navigation-restructure.md](plans/2026-03-08_NAV-001_navigation-restructure.md) | NAV-001 ナビゲーション再構築 — ツール→プラットフォーム転換（ボトムナビ5タブ + FAB + サイドメニュー整理） |
 | [2026-03-08_NAV-001-D_home-shortcut-grid.md](plans/2026-03-08_NAV-001-D_home-shortcut-grid.md) | NAV-001-D ホーム画面LIPS風アイコングリッド — 6ショートカット + タイトル/タブ名変更 |
 | [2026-03-07_UX-009_mypage-redesign.md](plans/2026-03-07_UX-009_mypage-redesign.md) | UX-009 マイページ全体リデザイン — カレンダー統合 + 戻るボタン修正 + レイアウト再構成 |
+| [2026-03-07_UX-010_stat-labels-purchase-links.md](plans/2026-03-07_UX-010_stat-labels-purchase-links.md) | UX-010 カテゴリ別スペックラベル + 購入リンク統合 |
+| [2026-03-08_UX-010B_lips-stats-imgly-bgremoval.md](plans/2026-03-08_UX-010B_lips-stats-imgly-bgremoval.md) | UX-010B LIPS準拠スペック指標 + @imgly ブラウザ側背景除去 |
 
 ## reference/ — 外部リファレンス・テスト
 
@@ -125,6 +127,7 @@ FEAT-001/002 Deep Research で作成した調査レポート群。Claude（2026-
 | [gemini_deep_research_prompt.md](research/gemini_deep_research_prompt.md) | Gemini Deep Research 統合プロンプト（初回投入用） |
 | [gemini_individual_prompts.md](research/gemini_individual_prompts.md) | Gemini 個別テーマプロンプト集（#1-11 全完了） |
 | [2026-03-08_navigation-platform-strategy.md](research/2026-03-08_navigation-platform-strategy.md) | ナビゲーション & プラットフォーム戦略リサーチ（LIPS実機分析・Agentic Commerce・バイラルループ） |
+| [2026-03-08_cosmetic-rating-metrics-research.md](research/2026-03-08_cosmetic-rating-metrics-research.md) | コスメ評価軸リサーチ — @cosme/LIPS/mybest/Sephora の評価システム比較 & カテゴリ別推奨ラベル |
 
 ## handoff/ — 引き継ぎ資料
 

@@ -150,7 +150,7 @@ export default function ItemDetailPage({ params }: { params: Promise<{ itemId: s
         {item.stats && (
           <div>
             <p className="text-sm font-medium text-alcheme-charcoal mb-2">スペック</p>
-            <StatBarGroup stats={item.stats} />
+            <StatBarGroup stats={item.stats} category={item.category} />
           </div>
         )}
 
@@ -179,29 +179,24 @@ export default function ItemDetailPage({ params }: { params: Promise<{ itemId: s
           </div>
         </div>
 
-        {/* Rakuten links */}
-        <div className="flex flex-col gap-2">
-          {item.product_url && item.product_url.includes('rakuten.co.jp') && (
+        {/* Purchase link */}
+        {(() => {
+          const hasDirectUrl = item.product_url && item.product_url.includes('rakuten.co.jp');
+          const href = hasDirectUrl
+            ? item.product_url!
+            : `https://search.rakuten.co.jp/search/mall/${encodeURIComponent(`${item.brand} ${item.product_name}${item.color_name ? ` ${item.color_name}` : ''}`)}/`;
+          return (
             <a
-              href={item.product_url}
+              href={href}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 text-sm text-neon-accent font-bold hover:underline"
             >
-              <ExternalLink className="h-4 w-4" />
-              楽天で見る
+              {hasDirectUrl ? <ExternalLink className="h-4 w-4" /> : <Search className="h-4 w-4" />}
+              {hasDirectUrl ? "楽天で見る" : "楽天で探す"}
             </a>
-          )}
-          <a
-            href={`https://search.rakuten.co.jp/search/mall/${encodeURIComponent(`${item.brand} ${item.product_name}${item.color_name ? ` ${item.color_name}` : ''}`)}/`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 text-sm text-text-muted hover:text-text-ink transition"
-          >
-            <Search className="h-4 w-4" />
-            楽天で探す
-          </a>
-        </div>
+          );
+        })()}
         {/* Related Recipes */}
         <div>
           <p className="text-sm font-medium text-alcheme-charcoal mb-2">
