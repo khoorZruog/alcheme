@@ -13,7 +13,7 @@ import type { CosmeCategory } from '@/types/inventory';
 /** 商品フィールド（Product に属するもの） */
 const PRODUCT_FIELDS = [
   'brand', 'product_name', 'category', 'item_type', 'color_code', 'color_name',
-  'color_description', 'texture', 'stats', 'rarity', 'pao_months', 'price',
+  'color_description', 'hex_color', 'texture', 'stats', 'rarity', 'pao_months', 'price',
   'product_url', 'image_url', 'rakuten_image_url', 'source', 'confidence',
   'images',
 ] as const;
@@ -53,6 +53,9 @@ export async function GET(request: NextRequest) {
       // If migrated (has product_id), join with product data
       if (data.product_id && productMap.has(data.product_id)) {
         const product = productMap.get(data.product_id)!;
+
+        // Skip ghost entries with missing essential fields
+        if (!product.brand || !product.product_name) continue;
 
         let cat = product.category ?? 'その他';
         if (cat in CATEGORY_EN_TO_JA) cat = CATEGORY_EN_TO_JA[cat];
@@ -97,6 +100,9 @@ export async function GET(request: NextRequest) {
         });
       } else {
         // Legacy item (not yet migrated): return as-is
+        // Skip ghost entries with missing essential fields
+        if (!data.brand || !data.product_name) continue;
+
         let cat = data.category ?? 'その他';
         if (cat in CATEGORY_EN_TO_JA) cat = CATEGORY_EN_TO_JA[cat];
 
@@ -167,10 +173,20 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // Validate required fields — skip incomplete entries
+      const brand = (productFields.brand as string || '').trim();
+      const productName = (productFields.product_name as string || '').trim();
+      if (!brand || !productName) {
+        console.warn('Skipping item with missing brand/product_name:', { brand, productName });
+        continue;
+      }
+      productFields.brand = brand;
+      productFields.product_name = productName;
+
       // Upsert product
       const key = dedupeKey(
-        productFields.brand as string || '',
-        productFields.product_name as string || '',
+        brand,
+        productName,
         productFields.color_code as string | undefined,
       );
       let productId = productDedupeMap.get(key);

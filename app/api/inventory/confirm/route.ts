@@ -87,6 +87,16 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // Validate required fields — skip incomplete entries
+      const brand = (productFields.brand as string || '').trim();
+      const productName = (productFields.product_name as string || '').trim();
+      if (!brand || !productName) {
+        console.warn('Skipping item with missing brand/product_name:', { brand, productName });
+        continue;
+      }
+      productFields.brand = brand;
+      productFields.product_name = productName;
+
       // Upsert product
       const key = dedupeKey(
         productFields.brand as string || '',
