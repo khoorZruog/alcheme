@@ -105,6 +105,7 @@ export async function GET(request: NextRequest) {
         color_code: data.color_code,
         color_name: data.color_name,
         color_description: data.color_description,
+        hex_color: data.hex_color,
         texture: data.texture,
         pao_months: data.pao_months,
         image_url: data.image_url,

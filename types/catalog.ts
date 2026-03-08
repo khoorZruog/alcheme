@@ -15,6 +15,8 @@ export interface CatalogEntry {
   color_code?: string;
   color_name?: string;
   color_description?: string;
+  /** 商品代表色のHEXカラーコード (例: "#C24B5A") */
+  hex_color?: string;
   texture?: CosmeTexture;
   pao_months?: number;
   image_url?: string;

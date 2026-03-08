@@ -11,7 +11,7 @@ import type { CosmeCategory } from '@/types/inventory';
 /** 商品フィールド */
 const PRODUCT_FIELDS = new Set([
   'brand', 'product_name', 'category', 'item_type', 'color_code', 'color_name',
-  'color_description', 'texture', 'stats', 'rarity', 'pao_months', 'price',
+  'color_description', 'hex_color', 'texture', 'stats', 'rarity', 'pao_months', 'price',
   'product_url', 'image_url', 'rakuten_image_url', 'source', 'confidence', 'images',
 ]);
 

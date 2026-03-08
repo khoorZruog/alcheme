@@ -179,22 +179,46 @@ export default function ItemDetailPage({ params }: { params: Promise<{ itemId: s
           </div>
         </div>
 
-        {/* Purchase link */}
+        {/* Shopping links */}
         {(() => {
+          const searchKeyword = `${item.brand} ${item.product_name}${item.color_name ? ` ${item.color_name}` : ''}`;
           const hasDirectUrl = item.product_url && item.product_url.includes('rakuten.co.jp');
-          const href = hasDirectUrl
+          const rakutenHref = hasDirectUrl
             ? item.product_url!
-            : `https://search.rakuten.co.jp/search/mall/${encodeURIComponent(`${item.brand} ${item.product_name}${item.color_name ? ` ${item.color_name}` : ''}`)}/`;
+            : `https://search.rakuten.co.jp/search/mall/${encodeURIComponent(searchKeyword)}/`;
+          const amazonHref = `https://www.amazon.co.jp/s?k=${encodeURIComponent(searchKeyword)}`;
+          const qoo10Keyword = encodeURIComponent(searchKeyword);
+          const qoo10Href = `https://www.qoo10.jp/s/${qoo10Keyword}?keyword=${qoo10Keyword}`;
           return (
-            <a
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 text-sm text-neon-accent font-bold hover:underline"
-            >
-              {hasDirectUrl ? <ExternalLink className="h-4 w-4" /> : <Search className="h-4 w-4" />}
-              {hasDirectUrl ? "楽天で見る" : "楽天で探す"}
-            </a>
+            <div className="flex flex-wrap gap-2">
+              <a
+                href={rakutenHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-red-50 text-red-600 hover:bg-red-100 transition"
+              >
+                {hasDirectUrl ? <ExternalLink className="h-3 w-3" /> : <Search className="h-3 w-3" />}
+                {hasDirectUrl ? "楽天で見る" : "楽天で探す"}
+              </a>
+              <a
+                href={amazonHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-orange-50 text-orange-600 hover:bg-orange-100 transition"
+              >
+                <Search className="h-3 w-3" />
+                Amazonで探す
+              </a>
+              <a
+                href={qoo10Href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-sky-50 text-sky-600 hover:bg-sky-100 transition"
+              >
+                <Search className="h-3 w-3" />
+                Qoo10で探す
+              </a>
+            </div>
           );
         })()}
         {/* Related Recipes */}

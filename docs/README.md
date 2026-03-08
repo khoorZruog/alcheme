@@ -81,6 +81,7 @@
 | [2026-03-07_UX-009_mypage-redesign.md](plans/2026-03-07_UX-009_mypage-redesign.md) | UX-009 マイページ全体リデザイン — カレンダー統合 + 戻るボタン修正 + レイアウト再構成 |
 | [2026-03-07_UX-010_stat-labels-purchase-links.md](plans/2026-03-07_UX-010_stat-labels-purchase-links.md) | UX-010 カテゴリ別スペックラベル + 購入リンク統合 |
 | [2026-03-08_UX-010B_lips-stats-imgly-bgremoval.md](plans/2026-03-08_UX-010B_lips-stats-imgly-bgremoval.md) | UX-010B LIPS準拠スペック指標 + @imgly ブラウザ側背景除去 |
+| [2026-03-08_FEAT-005_color-search.md](plans/2026-03-08_FEAT-005_color-search.md) | FEAT-005 色で探す — CIELAB色距離マッチング + カラーピッカーUI + Amazon/Qoo10リンク |
 
 ## reference/ — 外部リファレンス・テスト
 

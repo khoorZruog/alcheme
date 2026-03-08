@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Loader2, Users, ChevronDown, RefreshCw } from "lucide-react";
+import { Search, Loader2, Users, ChevronDown, RefreshCw, Palette } from "lucide-react";
 import { toast } from "sonner";
 import { MainTabHeader } from "@/components/main-tab-header";
 import { Input } from "@/components/ui/input";
@@ -10,9 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ItemEditSheet } from "@/components/item-edit-sheet";
 import { CatalogDetailSheet } from "@/components/catalog-detail-sheet";
 import { CatalogRankingCard } from "@/components/catalog-ranking-card";
+import { ColorMatchCard } from "@/components/color-match-card";
+import { ColorPicker } from "@/components/color-picker";
 import { InventoryGridSkeleton } from "@/components/loading-skeleton";
 import { useCatalogSearch } from "@/hooks/use-catalog-search";
 import { useCatalogBrowse, type CatalogSortKey } from "@/hooks/use-catalog-browse";
+import { useColorSearch } from "@/hooks/use-color-search";
 import { useInventory } from "@/hooks/use-inventory";
 import { cn } from "@/lib/utils";
 import type { CatalogEntry } from "@/types/catalog";
@@ -45,6 +48,9 @@ export default function CommunitySearchPage() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [editItem, setEditItem] = useState<InventoryItem | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [isColorMode, setIsColorMode] = useState(false);
+  const [selectedColor, setSelectedColor] = useState("#C24B5A");
+  const [colorCategory, setColorCategory] = useState<BrowseCategory>("全て");
 
   const isSearching = query.trim().length >= 2;
 
@@ -68,6 +74,17 @@ export default function CommunitySearchPage() {
     isSearching ? undefined : category === "全て" ? null : category,
     brand,
     sort,
+  );
+
+  // Color search mode
+  const {
+    results: colorResults,
+    isLoading: colorLoading,
+    isEmpty: colorEmpty,
+    totalWithColor,
+  } = useColorSearch(
+    isColorMode ? selectedColor : null,
+    colorCategory === "全て" ? null : colorCategory,
   );
 
   // Auto-backfill: when catalog is empty on first load, backfill user's products
@@ -159,19 +176,94 @@ export default function CommunitySearchPage() {
       <MainTabHeader title="発見" subtitle="DISCOVER" />
 
       <div className="px-4 py-4 space-y-3">
-        {/* Search bar */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted pointer-events-none" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="ブランド名、商品名で検索..."
-            className="pl-10 rounded-full bg-white/50 border-white/80 focus:border-neon-accent"
-          />
+        {/* Search bar + Color mode toggle */}
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted pointer-events-none" />
+            <Input
+              value={query}
+              onChange={(e) => { setQuery(e.target.value); if (e.target.value) setIsColorMode(false); }}
+              placeholder="ブランド名、商品名で検索..."
+              className="pl-10 rounded-full bg-white/50 border-white/80 focus:border-neon-accent"
+              disabled={isColorMode}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => { setIsColorMode(!isColorMode); setQuery(""); }}
+            className={cn(
+              "shrink-0 w-10 h-10 rounded-full flex items-center justify-center border transition-all btn-squishy",
+              isColorMode
+                ? "bg-neon-accent text-white border-neon-accent"
+                : "bg-white text-text-muted border-gray-200 hover:border-neon-accent"
+            )}
+            aria-label="色で探す"
+          >
+            <Palette className="h-4 w-4" />
+          </button>
         </div>
 
-        {/* Browse mode controls (hidden during search) */}
-        {!isSearching && (
+        {/* Color search mode */}
+        {isColorMode && (
+          <>
+            <ColorPicker
+              value={selectedColor}
+              onChange={setSelectedColor}
+            />
+            {/* Category tabs for color mode */}
+            <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
+              {BROWSE_CATEGORIES.map((cat) => (
+                <button
+                  key={cat.value}
+                  onClick={() => setColorCategory(cat.value as BrowseCategory)}
+                  className={cn(
+                    "shrink-0 px-5 py-2 rounded-full text-xs font-bold transition-all border btn-squishy",
+                    colorCategory === cat.value
+                      ? "bg-text-ink text-white border-text-ink"
+                      : "bg-white text-text-muted border-gray-200 hover:border-neon-accent"
+                  )}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Color search results */}
+            {colorLoading && <InventoryGridSkeleton />}
+
+            {!colorLoading && colorEmpty && (
+              <div className="py-12 text-center space-y-2">
+                <Palette className="h-10 w-10 text-text-muted/30 mx-auto" />
+                <p className="text-sm text-text-muted">
+                  色データのある商品がまだありません
+                </p>
+                <p className="text-xs text-text-muted">
+                  商品をスキャンすると自動的に色が登録されます
+                </p>
+              </div>
+            )}
+
+            {!colorLoading && colorResults.length > 0 && (
+              <>
+                <p className="text-xs text-text-muted">
+                  {colorCategory === "全て" ? "全カテゴリ" : colorCategory} — {colorResults.length}件マッチ（{totalWithColor}件中）
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  {colorResults.slice(0, 30).map((entry) => (
+                    <ColorMatchCard
+                      key={entry.id}
+                      entry={entry}
+                      onSelect={handleSelect}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </>
+        )}
+
+        {/* Browse mode controls (hidden during search or color mode) */}
+        {!isSearching && !isColorMode && (
           <>
             {/* Category tabs */}
             <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
@@ -234,7 +326,7 @@ export default function CommunitySearchPage() {
         )}
 
         {/* ── Browse mode content ── */}
-        {!isSearching && (
+        {!isSearching && !isColorMode && (
           <>
             {browseLoading && <InventoryGridSkeleton />}
 

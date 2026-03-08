@@ -12,7 +12,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 /** カタログに含める普遍的フィールド */
 const CATALOG_FIELDS = [
   'brand', 'product_name', 'category', 'item_type', 'color_code', 'color_name',
-  'color_description', 'texture', 'pao_months', 'price', 'product_url',
+  'color_description', 'hex_color', 'texture', 'pao_months', 'price', 'product_url',
   'image_url', 'rakuten_image_url',
 ] as const;
 

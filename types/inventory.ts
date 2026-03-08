@@ -46,6 +46,7 @@ export interface Product {
   color_code?: string;
   color_name?: string;
   color_description?: string;
+  hex_color?: string;
   texture: CosmeTexture;
   stats?: CosmeStats;
   rarity?: Rarity;
@@ -83,6 +84,7 @@ export interface InventoryItem {
   color_code?: string;
   color_name?: string;
   color_description: string;
+  hex_color?: string;
   texture: CosmeTexture;
   stats?: CosmeStats;
   rarity?: Rarity;

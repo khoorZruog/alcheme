@@ -18,6 +18,7 @@ class InventoryItem(BaseModel):
     color_code: str | None = None
     color_name: str | None = None
     color_description: str
+    hex_color: str | None = None  # estimated product color hex code (e.g. "#C24B5A")
     texture: Literal["マット", "ツヤ", "サテン", "シマー", "クリーム", "パウダー", "リキッド"]
     estimated_remaining: str
     pao_months: int | None = None  # auto-derived from item_type
