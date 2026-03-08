@@ -1,4 +1,62 @@
-# Cloud Run デプロイガイド（汎用版）
+# Cloud Run デプロイガイド
+
+## クイックリファレンス（Windows VSCode ユーザー向け）
+
+### 方法 1: 自動デプロイ（推奨）
+
+`main` ブランチに push するだけで Cloud Build が自動デプロイします。
+
+**VSCode ターミナル（Git Bash / PowerShell）で実行:**
+
+```bash
+# 1. 変更をコミット
+git add -A
+git commit -m "変更内容の説明"
+
+# 2. push → 自動デプロイ開始
+git push origin main
+```
+
+**デプロイ状況の確認:**
+- GCP Console → [Cloud Build 履歴](https://console.cloud.google.com/cloud-build/builds?project=alcheme-c36ef) で確認
+- または CLI: `gcloud builds list --project=alcheme-c36ef --limit=3`
+
+### 方法 2: 手動デプロイ（Cloud Build 経由）
+
+自動トリガーが無効な場合や、ブランチ以外からデプロイしたい場合:
+
+```bash
+# プロジェクトルート（c:\Users\BLtokyopcnote-17\alcheme）で実行
+gcloud builds submit . --project=alcheme-c36ef --config=cloudbuild.yaml
+```
+
+> **注意:** `gcloud builds submit` は Compute Engine デフォルト SA を使用します。
+> このSAに `roles/secretmanager.secretAccessor` が付与されている必要があります。
+
+### 方法 3: VSCode から直接 push
+
+1. VSCode 左サイドバーの「ソース管理」アイコン (Ctrl+Shift+G)
+2. 変更ファイルを確認し、`+` でステージ
+3. コミットメッセージを入力して `✓` ボタン
+4. `...` メニュー → `Push` または `Sync Changes`
+
+### デプロイ後の確認
+
+- **本番URL**: https://alcheme-c36ef.web.app（または Cloud Run URL）
+- **ビルドログ**: `gcloud builds log <BUILD_ID> --project=alcheme-c36ef`
+- **Cloud Run ログ**: GCP Console → Cloud Run → alcheme → ログ
+
+### トラブルシューティング
+
+| 症状 | 原因 | 対処 |
+|------|------|------|
+| push しても自動デプロイされない | トリガーが無効 | GCP Console → Cloud Build → トリガーで有効化 |
+| ビルド失敗: Secret Manager エラー | SA権限不足 | Compute Engine デフォルト SA に `secretAccessor` 付与 |
+| npm install 失敗 | package-lock.json 不整合 | `npm install` をローカルで実行して lock ファイルを更新後 push |
+
+---
+
+## 汎用デプロイガイド（詳細版）
 
 Google Cloud Run にコンテナアプリケーションをデプロイするための汎用手順書。
 フロントエンド (Next.js) + バックエンド (FastAPI/Express等) の 2 サービス構成を想定。
