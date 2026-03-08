@@ -58,10 +58,10 @@ export default function MainLayout({
   }
 
   return (
-    <div className="min-h-screen relative">
+    <div className="h-dvh overflow-hidden relative flex flex-col">
       <AuroraBackground />
       <SideMenuProvider value={{ openSideMenu: () => setSideMenuOpen(true) }}>
-        <div className={`relative z-10 ${hideNav || noPadding ? '' : 'pb-28'}`}>
+        <div className={`relative z-10 flex-1 min-h-0 overflow-y-auto ${hideNav || noPadding ? '' : 'pb-28'}`}>
           <main>{children}</main>
         </div>
       </SideMenuProvider>

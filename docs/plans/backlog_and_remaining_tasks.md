@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Version** | 1.0 |
-| **Date** | 2026-02-17 |
+| **Version** | 2.0 |
+| **Date** | 2026-03-08 |
 | **Author** | Eri Kaneko (Product Owner) |
 | **Status** | Active |
 | **Related** | alcheme_PRD_v4.md, alcheme_design-doc_v1.md, manual_e2e_test_guide.md |
@@ -140,15 +140,16 @@
 | **変更ファイル** | `components/bulk-action-bar.tsx`, `app/(main)/recipes/page.tsx`, `components/recipe-list-item.tsx`, `components/recipe-card-inline.tsx`, `components/recipe-omikuji-overlay.tsx`, `components/loading-skeleton.tsx` |
 | **計画書** | `docs/plans/2026-03-07_UX-002_recipe-list-unification.md` |
 
-### UX-003: ブランド名・商品名のサジェスト・入力規制
+### UX-003: ブランド名・商品名のサジェスト・入力規制 ✅ RESOLVED (2026-03-07)
 
 | 項目 | 詳細 |
 |------|------|
 | **重要度** | High |
+| **ステータス** | **✅ 解決済み（2026-03-07）** |
 | **現象** | 手動登録時にブランド名・商品名の表記ゆれが発生しうる。例:「KATE」「kate」「ケイト」「KANEBO KATE」が全て別ブランドとして扱われる。重複登録のリスクも高い |
-| **対応策** | ① **オートコンプリート**: ユーザーの既存在庫からブランド名・商品名をサジェスト。入力中にリアルタイム候補表示 ② **ブランド名正規化**: 登録時にブランド名を正規化ルール（大文字統一、全角→半角、読み仮名対応）で変換 ③ **重複検知**: 同一ブランド + 同一商品名 + 同一色番号の組み合わせが既に登録されている場合、警告を表示 ④ **商品マスタ参照**: 他ユーザーが登録済みの商品名DB（`products/`コレクション）からもサジェスト（中期） |
-| **共通コンポーネント化** | `BrandAutocomplete`, `ProductNameAutocomplete` コンポーネントを作成し、My Cosme 登録・Next Cosme 登録・手動登録すべてで共有 |
-| **対応工数** | 中（5-7日） |
+| **対応内容** | ① `AutocompleteInput` 共通コンポーネント: ユーザーの既存在庫+カタログからブランド名・商品名をリアルタイムサジェスト ② `DuplicateWarning` コンポーネント: 同一ブランド+商品名+色番号の重複検知+警告表示 ③ My Cosme 手動登録・ItemEditSheet・Next Cosme 登録の3画面に統合 |
+| **変更ファイル** | `components/autocomplete-input.tsx`(新規), `components/duplicate-warning.tsx`(新規), `app/(main)/add/manual/page.tsx`, `components/item-edit-sheet.tsx`, `app/(main)/suggestions/add/page.tsx` |
+| **検証** | 32テスト全パス、335テスト全体パス |
 
 ### UX-004: Next Cosme の登録方法統一
 
@@ -292,6 +293,29 @@
 
 | **対応工数** | 大（テーマカードUI: 1-2週間、レシピ提案フロー: 1週間、チャット改善: 2-3日） |
 
+### FEAT-008: 色で探す（Color Search） ✅ RESOLVED (2026-03-08)
+
+| 項目 | 詳細 |
+|------|------|
+| **重要度** | High |
+| **ステータス** | **✅ 解決済み（2026-03-08）** |
+| **背景** | 競合「LipMatch」がリップの色マッチング機能でバイラル。alche:me では**全カテゴリ対応**の色検索で差別化 |
+| **対応内容** | ① **データ層**: `hex_color` フィールドを TypeScript 型・Python スキーマ・全 API ルートに追加 ② **Agent 推定**: スキャン時に商品の代表色 HEX を推定する指示追加 ③ **色マッチングコア**: `lib/color-match.ts` — CIELAB ΔE76 色距離計算（sRGB→XYZ→CIELAB→ΔE76）④ **Color Search API**: `/api/catalog/color-search` — hex_color 付きカタログをフェッチ、クライアント側ΔEソート ⑤ **UI**: `ColorPicker`（HSLスライダー+7カラーファミリープリセット）、`ColorMatchCard`（マッチ%バッジ+カラースウォッチ）、コミュニティページに🎨トグルで色検索モード統合 ⑥ **ショッピングリンク**: 楽天（既存）+ Amazon (`/s?k=`) + Qoo10 (`/s/{keyword}?keyword=`) を詳細シート+在庫詳細に追加 |
+| **変更ファイル** | 新規7ファイル + 既存9ファイル修正。詳細は `docs/plans/2026-03-08_FEAT-005_color-search.md` |
+| **検証** | 383テスト全パス（59ファイル）、19件の色マッチユニットテスト追加。tsc クリーン |
+| **今後の拡張** | マルチカラー対応（`hex_colors: string[]`）— パレット・アイシャドウ向け。アフィリエイトタグ追加（Amazon/Qoo10 要登録） |
+
+### FEAT-009: Next Cosme AI 提案（Phase E）
+
+| 項目 | 詳細 |
+|------|------|
+| **重要度** | **High（次期最優先）** |
+| **ステータス** | 未着手（設計中） |
+| **背景** | 現状は My Cosme（在庫管理）が充実しているが、Next Cosme（買い足し候補）は手動追加のみ。AIが「あなたの手持ちコスメ・使用傾向・肌質・予算」を理解した上で、次に買うべきコスメをプロアクティブに提案する機能が必要 |
+| **機能概要** | ① **AI提案エンジン**: 在庫の使用頻度・カテゴリ偏り・季節・トレンドを分析 → 補完すべきアイテムを自動提案 ② **提案UI**: Next Cosme ページに「AIおすすめ」セクション追加（カード形式、理由付き） ③ **UX-004統合**: Next Cosme 登録方法を My Cosme と統一（スキャン/楽天/Web検索/手動の4方法） |
+| **ビジョン: Agentic Commerce** | 長期的には「在庫を知り尽くしたAIが、使い切りタイミング・新商品発売・価格下落を検知して、ワンタップ購入を提案する」エージェンティック・コマース基盤へ発展 |
+| **対応工数** | 大（設計1週間 + 実装2-3週間） |
+
 ### OPS-001: Open-Meteo APIコール監視 & アラート ✅ RESOLVED (2026-02-17)
 
 | 項目 | 詳細 |
@@ -389,25 +413,30 @@
 
 | ID | タイトル | 工数 | 影響度 |
 |----|---------|------|--------|
-| FEAT-005 | メイクテーマ・レシピ提案のフロー化UI | 大 | コアUX体験の革新 |
+| **FEAT-009** | **Next Cosme AI 提案（Phase E）** | **大** | **次期最優先 — AI買い足し提案 + Agentic Commerce 基盤** |
+| **UX-004** | **Next Cosme の登録方法統一** | **中** | **FEAT-009 と同時対応 — 4登録方法の共通化** |
+| ~~FEAT-005~~ | ~~メイクテーマ・レシピ提案のフロー化UI~~ | ~~大~~ | ✅ 完了（テーマカード + おみくじ + チャット改善 — A/B/C 全完了） |
+| ~~FEAT-008~~ | ~~色で探す（Color Search）~~ | ~~中~~ | ✅ 完了（CIELAB ΔE76 + カラーピッカー + Amazon/Qoo10 リンク — 383テスト通過） |
 | ~~FEAT-004~~ | ~~スケジュール連携（Google Calendar等）~~ | ~~中〜大~~ | ✅ 完了（Google Calendar OAuth + カレンダー選択 + 手動入力 + Agent統合） |
 | ~~ARCH-002(短期)~~ | ~~ADK Memory の永続化（短期策）~~ | ~~中~~ | ✅ 完了（Profiler結果のFirestore永続化 + セッション自動注入） |
-| UX-001 | レシピ・プレビュー画像の同時生成 ✅ | 中 | ユーザー体験の滑らかさ |
+| ~~UX-001~~ | ~~レシピ・プレビュー画像の同時生成~~ | ~~中~~ | ✅ 完了（content_done SSE + 非同期画像到着） |
 | ~~OPS-001~~ | ~~Open-Meteo APIコール監視 & アラート~~ | ~~小〜中~~ | ✅ 解決済み（構造化ログ + キャッシュ + 設定手順書） |
 | ~~UX-003~~ | ~~ブランド名・商品名のサジェスト~~ | ~~中~~ | ✅ 完了（AutocompleteInput + DuplicateWarning — 3画面統合・32テスト通過） |
 | ~~UX-002~~ | ~~レシピ一覧UIの統一~~ | ~~中~~ | ✅ 完了（glass-card + aspect-square + BulkActionBar 共有 — 6ファイル変更・335テスト通過） |
+| ~~UX-008~~ | ~~みんなのコスメ UX改善~~ | ~~中~~ | ✅ 完了（詳細シート + ブランドSelect + have_count修正） |
 
 ### P2: 計画的に対応（機能拡張）
 
 | ID | タイトル | 工数 | 影響度 |
 |----|---------|------|--------|
+| FEAT-008-B | Color Search マルチカラー対応（hex_colors: string[]） | 中 | パレット・アイシャドウ向け拡張 |
 | FEAT-004(Phase2) | マルチカレンダー連携（Notion/Apple/Outlook） | 中 | スケジュール連携の拡張 |
-| FEAT-001 | メイク日記の再設計 | 大 | エンゲージメント向上 |
-| UX-004 | Next Cosme の登録方法統一 | 中 | 機能一貫性 |
+| ~~FEAT-001~~ | ~~メイク日記の再設計~~ | ~~大~~ | ✅ 完了（Beauty Log ホリスティック・リデザイン） |
 | UX-005 | Next Cosme 画像アップロード | 小〜中 | スケーラビリティ |
 | UX-006 | 価格フィールドの逆輸入 | 中 | データ戦略基盤 |
 | UX-007 | チャット履歴管理強化 | 中〜大 | ユーザビリティ |
 | ~~ARCH-003~~ | ~~商品マスタの階層構造~~ | ~~大~~ | ✅ 完了（共有商品カタログ実装） |
+| NAV-002 | ナビゲーション再構築 v2（LIPS 2026 分析） | 大 | プラットフォーム化への進化 |
 
 ### P3: 将来検討（Deep Research 必要）
 
@@ -501,10 +530,16 @@
 - [x] FEAT-004: Google Calendar API 連携 ✅（OAuth 2.0 + カレンダー選択 + 手動入力 + Agent TPO Tactician 統合。計画: `docs/plans/2026-03-07_FEAT-004_google-calendar.md`）
 - [x] UX-001: レシピ・プレビュー画像の同時生成 ✅ (2026-02-22)
 - [x] UX-003: ブランド名・商品名サジェスト + 重複検知 ✅ (2026-03-07)
-- [ ] UX-004: Next Cosme の登録方法統一（共通コンポーネント化）
+- [x] UX-008: みんなのコスメ UX改善 + have_countバグ修正 ✅ (2026-03-07)
+- [x] FEAT-008: 色で探す（Color Search）✅ (2026-03-08) — CIELAB ΔE76 + カラーピッカー + Amazon/Qoo10リンク
+- [x] UX-010B: LIPS準拠統計ラベル + @imgly ブラウザ側背景除去 + 購入リンク統合 ✅ (2026-03-08)
+
+### Phase 3 残存タスク
+
 - [ ] UX-005: Next Cosme 画像アップロード方式への移行
 - [ ] UX-006: 価格フィールドの追加
 - [ ] UX-007: チャット履歴管理強化
+- [ ] FEAT-007: 顔タイプ診断 → カスタムアバター
 
 ### Phase 3.5: 追加 Deep Research + 拡張（2-4週間）
 
@@ -512,8 +547,20 @@
 - [x] ARCH-003: 共有商品カタログ実装 ✅（Phase 3 に前倒し実施。計画: `docs/plans/2026-02-21_ARCH-003_shared-catalog.md`）
 - [ ] BRAND-001: AI美容部員キャラクターデザイン
 
-### Phase 4: ビジネス基盤（Phase 3完了後）
+### Phase E: Next Cosme AI 提案 + Agentic Commerce 基盤（次期最優先）
 
+> **戦略コンセプト**: alche:me を「ツール」から「プラットフォーム」に進化させるための最重要フェーズ。
+> AIが在庫・使用傾向・肌質・予算を理解し、次に買うべきコスメをプロアクティブに提案する。
+> 長期的には「使い切りタイミング検知 → 新商品マッチング → ワンタップ購入」のエージェンティック・コマース基盤へ発展。
+
+- [ ] FEAT-009: Next Cosme AI 提案エンジン（在庫分析 → 補完アイテム自動提案 → 理由付きカードUI）
+- [ ] UX-004: Next Cosme 登録方法統一（スキャン/楽天/Web検索/手動の4方法を My Cosme と共通化）
+- [ ] FEAT-008-B: Color Search マルチカラー対応（hex_colors: string[] — パレット・アイシャドウ向け）
+- [ ] アフィリエイト連携: Amazon Associates / Qoo10 パートナー登録 + タグ埋め込み
+
+### Phase F: プラットフォーム進化（Phase E 完了後）
+
+- [ ] NAV-002: ナビゲーション再構築 v2（LIPS 2026 分析に基づくプラットフォーム型ナビ）
 - [ ] ARCH-002（長期）: Memory永続化の本格実装
 - [ ] FEAT-003: エージェント動作の可視化
 - [ ] DATA-001, DATA-002: データ分析基盤
@@ -521,7 +568,7 @@
 
 ---
 
-### インフラ改善（2026-03-07）
+### インフラ改善（2026-03-07〜08）
 
 - [x] Secret Manager 移行: 10個の機密値を `availableSecrets` 方式に移行 ✅
 - [x] Cloud Build トリガー: GitHub 2nd-gen 接続 + `main` ブランチ push 自動デプロイ ✅
@@ -530,6 +577,9 @@
 - [x] NAV-001: ナビゲーション再構築 — ボトムナビ5タブ(ホーム/発見/AI美容部員/Next Cosme/マイページ) + FAB + サイドメニュー重複解消 ✅
 - [x] NAV-001-D: ホーム画面LIPS風アイコングリッド — 6ショートカット(AI診断/ランキング/レシピ/スキャン/メイク日記/My Cosme) + タイトル「ホーム」+ タブ名「おすすめ」 ✅
 - [x] UX-MyPage: マイページ全体リデザイン — カレンダーサイドメニュー統合 + 戻るボタンrouter.back()修正 + レイアウト再構成(BeautyLogPreview/CategoryBadgesタブ内移動、スティッキータブ) ✅
+- [x] UX-010B: LIPS準拠統計ラベル（持ってる/欲しい/活用）+ @imgly ブラウザ側背景除去 + 購入リンク統合（楽天/Amazon/Qoo10）✅
+- [x] FEAT-008: 色で探す — CIELAB ΔE76 色距離マッチング + HSLカラーピッカー + コスメプリセット7色 + ColorMatchCard + コミュニティページ統合 ✅
+- [x] デプロイガイド: Windows VSCode ユーザー向けクイックリファレンス追加（`docs/guides/cloud-run-deploy-guide.md`）✅
 
 *Created: 2026-02-17*
-*Last Updated: 2026-03-08 (UX-MyPage マイページリデザイン 完了)*
+*Last Updated: 2026-03-08 (FEAT-008 色検索 + UX-010B LIPS準拠 + Phase E/F 戦略追加)*

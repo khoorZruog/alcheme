@@ -16,7 +16,10 @@ import {
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { removeBackground } from "@imgly/background-removal";
+// Dynamic import — @imgly/background-removal uses WASM+Workers (browser-only)
+// Static import crashes SSR / module evaluation on server
+const importRemoveBackground = () =>
+  import("@imgly/background-removal").then((m) => m.removeBackground);
 
 /* ------------------------------------------------------------------ */
 /*  Types & constants                                                  */
@@ -59,6 +62,7 @@ const TOOLS: { id: ToolTab; icon: typeof Sparkles; label: string }[] = [
 
 /** Browser-side background removal + 512x512 white-bg normalization */
 async function removeBackgroundClient(dataUrl: string): Promise<string> {
+  const removeBackground = await importRemoveBackground();
   const res = await fetch(dataUrl);
   const blob = await res.blob();
   const resultBlob = await removeBackground(blob, {
